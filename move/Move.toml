@@ -4,12 +4,24 @@ edition = "2024.beta"
 
 [dependencies]
 # The Sui framework is supplied implicitly by the CLI and is deliberately not
-# pinned here — an explicit git rev that drifts from the installed toolchain is
-# a common and confusing build failure. Move.lock pins the resolved revision.
-#
-# payment_kit lives at the root of its repo, so there is no subdir. Pinned to an
-# exact rev rather than a branch so the build is reproducible.
+# pinned here; Move.lock records the resolved revision. payment_kit lives at the
+# root of its repo, so there is no subdir, and is pinned to an exact rev rather
+# than a branch so the build is reproducible.
 payment_kit = { git = "https://github.com/MystenLabs/sui-payment-kit.git", rev = "34464974de849975872cc67f02715a98db3112ba" }
 
-[addresses]
-suisure = "0x0"
+# There is deliberately no [addresses] section. payment_kit's own manifest
+# declares payment_kit = "0x0" and records no published address anywhere, so
+# `sui client publish` reports it as an unpublished dependency and refuses --
+# forcing it through with --with-unpublished-dependencies would deploy a second
+# copy of payment_kit, leaving this module calling a package that the canonical
+# Namespace and PaymentRegistry know nothing about.
+#
+# `sui client upgrade` resolves it correctly on its own. Verified on a wiped
+# build directory: the upgrade dry run lists dependencies 0x1, 0x2 and
+# 0x7e069abe..1497, the canonical deployed payment_kit, with no duplicate.
+#
+# So changes go out as upgrades, not republishes. That also preserves the
+# package ID and the registered merchant credentials.
+#
+# Adding an [addresses] section switches the whole file to the legacy manifest
+# parser, where the modern [dep-replacements] section is silently ignored.
