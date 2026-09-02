@@ -45,10 +45,24 @@ export const SUI_CONFIG = {
   registryId: "" as string,
   /** RegistryAdminCap object ID returned alongside the registry. Step 2. */
   registryAdminCapId: "" as string,
-  /** suisure::payments package ID. Changes on every republish. Steps 3 and 6. */
-  packageId: "" as string,
+  /**
+   * suisure::payments package ID. Steps 3 and 6.
+   *
+   * A *republish* changes this and orphans every object created against the
+   * old package. An *upgrade* does not — see move/Published.toml, which
+   * records the UpgradeCap. Prefer upgrading for step 4.
+   */
+  packageId:
+    "0x0a855f30c0979bad86c200847ea61c6befafde3a4769d771c539a4031e980a00" as string,
   /** AdminCap object ID minted to the deployer at publish. Steps 3 and 6. */
-  adminCapId: "" as string,
+  adminCapId:
+    "0x2bf633f877f078e014a82940374242ddde81e23e4d42c657550c0096cb546264" as string,
+  /**
+   * UpgradeCap for the package. Losing it means the package can never be
+   * upgraded, only republished under a new ID.
+   */
+  upgradeCapId:
+    "0xf5488918e6932a74a31ed05837b6b9fdaed036b1106754bb20e9d2a59178c17b" as string,
   /** Shared MerchantCredential object IDs for the demo merchants. Steps 3 and 6. */
   merchantCredentialIds: [] as string[],
 } as const;
