@@ -63,8 +63,16 @@ export const SUI_CONFIG = {
    */
   upgradeCapId:
     "0xf5488918e6932a74a31ed05837b6b9fdaed036b1106754bb20e9d2a59178c17b" as string,
-  /** Shared MerchantCredential object IDs for the demo merchants. Steps 3 and 6. */
-  merchantCredentialIds: [] as string[],
+  /**
+   * Shared MerchantCredential object IDs for the demo merchants, in order:
+   *   [0] Kopitiam Seri Damai — Food & Beverage
+   *   [1] Campus Cafe         — Food & Beverage
+   * Steps 3 and 6.
+   */
+  merchantCredentialIds: [
+    "0x62152dd75cc21378c319741d75e114134fa2c7084c1e34bd6b75ff52bad338e0",
+    "0xf8ed47fba2d595be870747c23f5684db8787d432372e3bed7d8ebd69fd2ef21a",
+  ] as string[],
 } as const;
 
 export const explorerTxUrl = (digest: string) =>
