@@ -41,10 +41,21 @@ export const SUI_CONFIG = {
    * actually in play — assuming MIST for USDC is wrong by 1000x.
    */
   usdcDecimals: 6,
-  /** PaymentRegistry object ID returned by create_registry. Step 2. */
-  registryId: "" as string,
+  /**
+   * PaymentRegistry object ID, shared. Created as "suisure-testnet" against
+   * the Namespace above. Step 2.
+   *
+   * Its `registry_managed_funds` config is false — the key is absent, and
+   * payment_kit treats absent as false. That is what keeps us non-custodial:
+   * process_registry_payment takes the else branch and does a direct
+   * public_transfer to the merchant payout rather than collecting into the
+   * registry. Do not set it true.
+   */
+  registryId:
+    "0x3291fba65f6b24c4790727042b7198be9b0be43e3b88694a330cd4ad644e1691" as string,
   /** RegistryAdminCap object ID returned alongside the registry. Step 2. */
-  registryAdminCapId: "" as string,
+  registryAdminCapId:
+    "0x51307731279cfe0c9a8d324bce95d15d48a03c20a1b6c1ba0f24fea78c96b631" as string,
   /**
    * suisure::payments package ID. Steps 3 and 6.
    *
