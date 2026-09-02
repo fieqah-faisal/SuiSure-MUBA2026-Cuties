@@ -5,10 +5,11 @@ edition = "2024.beta"
 [dependencies]
 # The Sui framework is supplied implicitly by the CLI and is deliberately not
 # pinned here — an explicit git rev that drifts from the installed toolchain is
-# a common and confusing build failure.
+# a common and confusing build failure. Move.lock pins the resolved revision.
 #
-# payment_kit is added in step 4, once its package ID has been resolved by
-# reading the owner of the testnet Namespace object. Do not guess it.
+# payment_kit lives at the root of its repo, so there is no subdir. Pinned to an
+# exact rev rather than a branch so the build is reproducible.
+payment_kit = { git = "https://github.com/MystenLabs/sui-payment-kit.git", rev = "34464974de849975872cc67f02715a98db3112ba" }
 
 [addresses]
 suisure = "0x0"
