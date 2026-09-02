@@ -1,0 +1,14 @@
+[package]
+name = "suisure"
+edition = "2024.beta"
+
+[dependencies]
+# The Sui framework is supplied implicitly by the CLI and is deliberately not
+# pinned here — an explicit git rev that drifts from the installed toolchain is
+# a common and confusing build failure.
+#
+# payment_kit is added in step 4, once its package ID has been resolved by
+# reading the owner of the testnet Namespace object. Do not guess it.
+
+[addresses]
+suisure = "0x0"
