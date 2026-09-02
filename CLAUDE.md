@@ -240,7 +240,7 @@ not whether an intent is still valid. That check lives in our module.
 
 - **Build and demo on testnet.** Section 9 of the rules deck lists mainnet deployment using
   real funds during the hacking period as immediate disqualification. Organizers have verbally
-  indicated mainnet is permitted — do not act on that without written confirmation on record.
+  indicated mainnet is permitted and is encouraging for it — do not act on that without written confirmation on record.
 - **Commit history must start no earlier than 26 August 2026.** Ours starts 31 August, so we
   are clear. Commit in small, meaningful increments — "clear commit history" is a stated
   requirement and one giant dump reads badly.
