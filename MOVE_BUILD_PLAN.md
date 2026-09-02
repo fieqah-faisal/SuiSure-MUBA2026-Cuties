@@ -79,8 +79,8 @@ Create `move/` with module `suisure::payments` containing only:
 
 - `AdminCap has key, store`, minted to the deployer in `init`
 - `MerchantCredential has key`, shared via `transfer::share_object`, fields: `name: String`,
-  `payout: address`, `active: bool`
-- `register_merchant(_: &AdminCap, name, payout, ctx)`
+  `category: String`, `payout: address`, `active: bool`
+- `register_merchant(_: &AdminCap, name, category, payout, ctx)`
 
 Add one Move unit test that registers a merchant and asserts the credential fields.
 
@@ -105,10 +105,41 @@ Then register two demo merchants and record their credential object IDs.
 Add to the same module:
 
 - `PaymentIntent has key`, shared. Fields: `credential_id: ID`, `amount: u64`, `nonce: String`,
-  `expiry_ms: u64`, `paid: bool`
+  `expiry_ms: u64`, `paid: bool`, plus four display fields the frontend has no other on-chain
+  source for: `amount_myr: u64`, `description: String`, `order_ref: String`,
+  `created_at_ms: u64`
 - `PaymentCompleted has copy, drop` event
-- `create_payment_intent(&MerchantCredential, amount, nonce, expiry_ms, ctx)`
+- `create_payment_intent(&MerchantCredential, amount, amount_myr, nonce, description,
+  order_ref, expiry_ms, &Clock, ctx)`
+- `set_merchant_active(_: &AdminCap, credential: &mut MerchantCredential, active: bool)`
 - `pay_payment_intent<T>(...)` — generic over the coin type
+
+### Why `PaymentIntent` carries display fields
+
+`PaymentIntent` in `src/types/domain.ts` needs `amountMyr`, `description`, `orderReference`
+and `createdAt`. The five-field struct has no source for any of them, so they would have to
+arrive from somewhere off chain — meaning the review screen would show the customer
+unverified data while presenting it as canonical Sui state. That is the exact failure this
+product exists to prevent, so they live on chain instead.
+
+`amount_myr` is **integer sen**, because Move has no floats: RM12.50 is `1250`. It is a
+display value only. The figure actually enforced at payment time is `amount`, in the coin's
+smallest unit.
+
+`created_at_ms` is why `create_payment_intent` also takes `&Clock`.
+
+`category` is on `MerchantCredential` for the same reason — both `VerifiedMerchant` and
+`MerchantCredential` in the frontend need it. `logoInitials` deliberately stays off chain and
+is derived from the merchant name.
+
+Adding a field is cheap now and costs a republish later, so this is the moment to get it
+right.
+
+### Why `set_merchant_active` exists
+
+It is a real admin requirement on its own — a merchant that stops trading or turns out to be
+fraudulent has to be switchable off without republishing the package. It is also the only way
+Step 5 can produce an inactive credential to test `EMerchantInactive` against.
 
 Error constants:
 
@@ -146,7 +177,8 @@ live on Saturday.
 Write Move unit tests covering:
 
 1. Happy path — valid payment succeeds, `paid` flips, event emitted
-2. `EMerchantInactive` — inactive credential is rejected
+2. `EMerchantInactive` — inactive credential is rejected (deactivate it first with
+   `set_merchant_active`)
 3. `EIntentExpired` — expired intent is rejected (advance the test clock)
 4. `EIntentAlreadyPaid` — paying twice is rejected
 5. `ECredentialMismatch` — passing a different merchant's credential is rejected
