@@ -83,6 +83,12 @@ export const SUI_CONFIG = {
   upgradeCapId:
     "0xf5488918e6932a74a31ed05837b6b9fdaed036b1106754bb20e9d2a59178c17b" as string,
   /**
+   * A completed end-to-end payment on testnet, proving the whole flow:
+   * 2.553191 USDC (RM12.00) from the payer to Kopitiam Seri Damai's
+   * registered payout address, via payment_kit. Step 6.
+   */
+  sampleTxDigest: "73FoxwgHirmKuDNcCWv4dmVcvNTimZW6ah42tYJ6wtit" as string,
+  /**
    * Shared MerchantCredential object IDs for the demo merchants, in order:
    *   [0] Kopitiam Seri Damai — Food & Beverage
    *   [1] Campus Cafe         — Food & Beverage
