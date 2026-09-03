@@ -1,0 +1,64 @@
+import {
+  useCurrentAccount,
+  useCurrentClient,
+  useCurrentNetwork,
+  useDAppKit,
+} from "@mysten/dapp-kit-react";
+import { useCallback } from "react";
+
+import { SUI_CONFIG } from "@/config/sui";
+import { useSession } from "@/hooks/useSession";
+import { notificationService } from "@/services/notifications/notification.service";
+import { paymentService } from "@/services/payments/payment.service";
+import type { PaymentIntent, PaymentReceipt } from "@/types/domain";
+
+/** Owns the wallet-only boundary for signing and confirming a real Sui payment. */
+export function usePaymentExecution() {
+  const dAppKit = useDAppKit();
+  const client = useCurrentClient();
+  const currentAccount = useCurrentAccount();
+  const currentNetwork = useCurrentNetwork();
+  const { refreshBalance } = useSession();
+
+  const executePayment = useCallback(
+    async (intent: PaymentIntent): Promise<PaymentReceipt> => {
+      if (!currentAccount) throw new Error("Connect your Sui wallet before paying.");
+      if (currentNetwork !== SUI_CONFIG.network) {
+        throw new Error(`Switch your wallet to ${SUI_CONFIG.networkLabel} before paying.`);
+      }
+
+      const transaction = await paymentService.preparePaymentTransaction(
+        intent,
+        currentAccount.address,
+      );
+      const result = await dAppKit.signAndExecuteTransaction({ transaction });
+      if (result.$kind === "FailedTransaction") {
+        throw new Error(
+          result.FailedTransaction.status.error?.message ?? "The Sui transaction failed.",
+        );
+      }
+
+      const digest = result.Transaction.digest;
+      const confirmed = await client.waitForTransaction({ digest, include: { effects: true } });
+      if (confirmed.$kind === "FailedTransaction") {
+        throw new Error(
+          confirmed.FailedTransaction.status.error?.message ?? "The payment failed on Sui Testnet.",
+        );
+      }
+
+      const receipt = paymentService.recordConfirmedPayment(intent, currentAccount.address, digest);
+      notificationService.addPaymentConfirmation(receipt);
+      // Confirmation is authoritative even if a follow-up balance refresh is unavailable.
+      await refreshBalance().catch(() => undefined);
+      return receipt;
+    },
+    [client, currentAccount, currentNetwork, dAppKit, refreshBalance],
+  );
+
+  return {
+    executePayment,
+    connectedAddress: currentAccount?.address ?? null,
+    currentNetwork,
+    readyToPay: Boolean(currentAccount) && currentNetwork === SUI_CONFIG.network,
+  };
+}

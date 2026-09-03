@@ -40,14 +40,15 @@ export const Route = createFileRoute("/app")({
 });
 
 function CustomerDashboard() {
-  const { account, balance, balanceToken, isMerchant, viewMode, setViewMode } = useSession();
+  const { account, balance, balanceToken, gasBalance, isMerchant, viewMode, setViewMode } =
+    useSession();
   const [receipts, setReceipts] = useState<PaymentReceipt[] | null>(null);
   const [merchants, setMerchants] = useState<VerifiedMerchant[]>([]);
 
   useEffect(() => {
-    void paymentService.listReceipts().then(setReceipts);
+    void paymentService.listReceipts(account?.address).then(setReceipts);
     void merchantService.listVerifiedMerchants().then(setMerchants);
-  }, []);
+  }, [account?.address]);
 
   return (
     <AppShell>
@@ -56,6 +57,7 @@ function CustomerDashboard() {
       <BalanceWidget
         balance={balance}
         balanceToken={balanceToken}
+        gasBalance={gasBalance}
         address={account?.address}
         displayName={account?.displayName}
       />
@@ -63,8 +65,18 @@ function CustomerDashboard() {
       <section className="mt-5 grid grid-cols-4 gap-2">
         {[
           { to: "/pay" as const, label: "Scan", icon: QrCode, search: { tab: "scan" as const } },
-          { to: "/pay" as const, label: "Upload", icon: Upload, search: { tab: "upload" as const } },
-          { to: "/pay" as const, label: "Ask AI", icon: MessageSquareText, search: { tab: "ai" as const } },
+          {
+            to: "/pay" as const,
+            label: "Upload",
+            icon: Upload,
+            search: { tab: "upload" as const },
+          },
+          {
+            to: "/pay" as const,
+            label: "Ask AI",
+            icon: MessageSquareText,
+            search: { tab: "ai" as const },
+          },
           { to: "/activity" as const, label: "Activity", icon: Activity, search: undefined },
         ].map((action) => (
           <Link
@@ -86,8 +98,6 @@ function CustomerDashboard() {
           </Link>
         ))}
       </section>
-
-
 
       {isMerchant ? (
         <section className="surface-card mt-5 flex items-center justify-between p-4">

@@ -1,19 +1,8 @@
 import { z } from "zod";
 
-export type NetworkStatus =
-  | "online"
-  | "offline"
-  | "degraded"
-  | "unavailable"
-  | "wrong-network";
+export type NetworkStatus = "online" | "offline" | "degraded" | "unavailable" | "wrong-network";
 
-export type PaymentStatus =
-  | "draft"
-  | "pending"
-  | "confirmed"
-  | "declined"
-  | "failed"
-  | "expired";
+export type PaymentStatus = "draft" | "pending" | "confirmed" | "declined" | "failed" | "expired";
 
 export type RiskLevel = "low" | "medium" | "high" | "blocked";
 
@@ -55,6 +44,8 @@ export interface PaymentIntent {
   amountMyr: number;
   tokenAmount: number;
   tokenType: string;
+  /** Full Sui coin type used for transaction construction. */
+  coinType?: string | undefined;
   description?: string | undefined;
   orderReference?: string | undefined;
   network: SuiNetwork;
@@ -121,12 +112,14 @@ export interface AiParsedIntent {
   clarificationQuestion?: string | undefined;
 }
 
+const suiObjectIdSchema = z.string().regex(/^0x[0-9a-fA-F]{64}$/, "Invalid Sui object ID");
+
 export const paymentIntentQrPayloadSchema = z.object({
   v: z.literal(1),
   type: z.literal("suisure.payment-intent"),
   network: z.enum(["testnet", "mainnet", "devnet", "localnet"]),
-  paymentIntentId: z.string().min(3),
-  merchantObjectId: z.string().min(3),
+  paymentIntentId: suiObjectIdSchema,
+  merchantObjectId: suiObjectIdSchema,
 });
 
 export type PaymentIntentQRPayload = z.infer<typeof paymentIntentQrPayloadSchema>;

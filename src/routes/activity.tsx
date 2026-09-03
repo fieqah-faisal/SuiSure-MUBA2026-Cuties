@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app/AppShell";
 import { EmptyState } from "@/components/app/EmptyState";
 import { paymentService } from "@/services/payments/payment.service";
+import { useSession } from "@/hooks/useSession";
 import type { PaymentReceipt } from "@/types/domain";
 
 export const Route = createFileRoute("/activity")({
@@ -23,11 +24,12 @@ export const Route = createFileRoute("/activity")({
 });
 
 function ActivityPage() {
+  const { account } = useSession();
   const [receipts, setReceipts] = useState<PaymentReceipt[] | null>(null);
 
   useEffect(() => {
-    void paymentService.listReceipts().then(setReceipts);
-  }, []);
+    void paymentService.listReceipts(account?.address).then(setReceipts);
+  }, [account?.address]);
 
   return (
     <AppShell title="Activity">

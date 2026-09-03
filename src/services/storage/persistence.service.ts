@@ -11,7 +11,9 @@ export type PersistenceKey =
   | "session"
   | "role-override"
   | "recent-merchants"
-  | "dismissed";
+  | "dismissed"
+  | "receipts"
+  | "notification-items";
 
 const isBrowser = () => typeof window !== "undefined";
 
