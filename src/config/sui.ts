@@ -10,6 +10,15 @@ import type { SuiNetwork } from "@/types/domain";
 export const SUI_CONFIG = {
   network: "testnet" as SuiNetwork,
   networkLabel: "Sui Testnet",
+  /**
+   * gRPC endpoint. Use this one.
+   *
+   * JSON-RPC is deprecated and already returns -32601 "Method not found" on
+   * public testnet fullnodes, not just mainnet. Anything built on
+   * @mysten/sui/jsonRpc will fail.
+   */
+  grpcUrl: "https://fullnode.testnet.sui.io:443",
+  /** @deprecated JSON-RPC is disabled on public fullnodes. Use grpcUrl. */
   rpcUrl: "https://fullnode.testnet.sui.io:443",
   explorerBaseUrl: "https://suiscan.xyz/testnet",
   defaultToken: "SUI",
@@ -51,8 +60,7 @@ export const SUI_CONFIG = {
    * public_transfer to the merchant payout rather than collecting into the
    * registry. Do not set it true.
    */
-  registryId:
-    "0x3291fba65f6b24c4790727042b7198be9b0be43e3b88694a330cd4ad644e1691" as string,
+  registryId: "0x3291fba65f6b24c4790727042b7198be9b0be43e3b88694a330cd4ad644e1691" as string,
   /** RegistryAdminCap object ID returned alongside the registry. Step 2. */
   registryAdminCapId:
     "0x51307731279cfe0c9a8d324bce95d15d48a03c20a1b6c1ba0f24fea78c96b631" as string,
@@ -60,28 +68,25 @@ export const SUI_CONFIG = {
    * Latest suisure::payments package ID — the one to call functions on.
    * Changes on every upgrade, so always read it from here.
    */
-  packageId:
-    "0x428e043100e7c4e6a0efed67a7b49f1537bd7bc25a58f6294832de7eda63713b" as string,
+  packageId: "0x428e043100e7c4e6a0efed67a7b49f1537bd7bc25a58f6294832de7eda63713b" as string,
   /**
    * The first-published package ID, which never changes.
    *
-   * Type identity is anchored to it, so every object created by any version
-   * reports its type as `<originalPackageId>::payments::MerchantCredential`,
-   * not the latest ID. Use this one when matching object types, filtering
-   * events, or querying by type — and `packageId` when making move calls.
-   * Mixing them up silently returns nothing.
+   * Needed because a struct's type is anchored to the package version that
+   * first defined it. MerchantCredential existed at first publish and reports
+   * this ID; PaymentIntent and SuiSureReceipt were added by the upgrade and
+   * report `packageId`. Neither ID alone matches every type, so use
+   * `isSuiSureType` in src/services/sui/client.ts rather than comparing against
+   * one of them. Move calls always go to `packageId`.
    */
-  originalPackageId:
-    "0x0a855f30c0979bad86c200847ea61c6befafde3a4769d771c539a4031e980a00" as string,
+  originalPackageId: "0x0a855f30c0979bad86c200847ea61c6befafde3a4769d771c539a4031e980a00" as string,
   /** AdminCap object ID minted to the deployer at publish. Steps 3 and 6. */
-  adminCapId:
-    "0x2bf633f877f078e014a82940374242ddde81e23e4d42c657550c0096cb546264" as string,
+  adminCapId: "0x2bf633f877f078e014a82940374242ddde81e23e4d42c657550c0096cb546264" as string,
   /**
    * UpgradeCap for the package. Losing it means the package can never be
    * upgraded, only republished under a new ID.
    */
-  upgradeCapId:
-    "0xf5488918e6932a74a31ed05837b6b9fdaed036b1106754bb20e9d2a59178c17b" as string,
+  upgradeCapId: "0xf5488918e6932a74a31ed05837b6b9fdaed036b1106754bb20e9d2a59178c17b" as string,
   /**
    * A completed end-to-end payment on testnet, proving the whole flow:
    * 2.553191 USDC (RM12.00) from the payer to Kopitiam Seri Damai's
@@ -100,13 +105,10 @@ export const SUI_CONFIG = {
   ] as string[],
 } as const;
 
-export const explorerTxUrl = (digest: string) =>
-  `${SUI_CONFIG.explorerBaseUrl}/tx/${digest}`;
+export const explorerTxUrl = (digest: string) => `${SUI_CONFIG.explorerBaseUrl}/tx/${digest}`;
 
 export const explorerObjectUrl = (objectId: string) =>
   `${SUI_CONFIG.explorerBaseUrl}/object/${objectId}`;
 
 export const shortAddress = (address: string, lead = 6, tail = 4) =>
-  address.length <= lead + tail + 2
-    ? address
-    : `${address.slice(0, lead)}…${address.slice(-tail)}`;
+  address.length <= lead + tail + 2 ? address : `${address.slice(0, lead)}…${address.slice(-tail)}`;

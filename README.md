@@ -53,11 +53,21 @@ Two IDs, and they are **not interchangeable**.
 | Original — use for type identity | `0x0a855f30c0979bad86c200847ea61c6befafde3a4769d771c539a4031e980a00` |
 
 The package was published at the original ID and later upgraded, which changes the
-ID used to call functions. Type identity stays anchored to the original, so every
-object reports its type as `0x0a855f30…::payments::MerchantCredential` regardless of
-which version created it. Query object types and filter events on the original ID;
-send transactions to the latest. Using the latest ID for a type query returns
-nothing, silently.
+ID used to call functions. **Send every transaction to the latest ID.**
+
+Type identity is subtler, and worth getting right before it costs someone an hour:
+a struct is anchored to the package version that *first defined it*, not to the
+original package ID.
+
+| Struct | First defined | Reports |
+| --- | --- | --- |
+| `MerchantCredential` | first publish | `0x0a855f30…` |
+| `PaymentIntent` | upgrade | `0x428e0431…` |
+| `SuiSureReceipt` | upgrade | `0x428e0431…` |
+
+So matching object types or filtering events against one hardcoded package ID will
+silently miss one group or the other. Match on the module and struct name and accept
+either ID — `isSuiSureType` in `src/services/sui/client.ts` does exactly this.
 
 ### On-chain objects
 
