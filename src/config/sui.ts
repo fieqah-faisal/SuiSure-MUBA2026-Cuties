@@ -57,13 +57,21 @@ export const SUI_CONFIG = {
   registryAdminCapId:
     "0x51307731279cfe0c9a8d324bce95d15d48a03c20a1b6c1ba0f24fea78c96b631" as string,
   /**
-   * suisure::payments package ID. Steps 3 and 6.
-   *
-   * A *republish* changes this and orphans every object created against the
-   * old package. An *upgrade* does not — see move/Published.toml, which
-   * records the UpgradeCap. Prefer upgrading for step 4.
+   * Latest suisure::payments package ID — the one to call functions on.
+   * Changes on every upgrade, so always read it from here.
    */
   packageId:
+    "0x428e043100e7c4e6a0efed67a7b49f1537bd7bc25a58f6294832de7eda63713b" as string,
+  /**
+   * The first-published package ID, which never changes.
+   *
+   * Type identity is anchored to it, so every object created by any version
+   * reports its type as `<originalPackageId>::payments::MerchantCredential`,
+   * not the latest ID. Use this one when matching object types, filtering
+   * events, or querying by type — and `packageId` when making move calls.
+   * Mixing them up silently returns nothing.
+   */
+  originalPackageId:
     "0x0a855f30c0979bad86c200847ea61c6befafde3a4769d771c539a4031e980a00" as string,
   /** AdminCap object ID minted to the deployer at publish. Steps 3 and 6. */
   adminCapId:
