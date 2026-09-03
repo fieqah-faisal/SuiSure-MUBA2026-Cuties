@@ -299,12 +299,11 @@ times so the demo wallet holds multiple separate gas coins.
 **Expiry is ours.** Payment Kit's `epoch_expiration_duration` governs deleting old records,
 not whether an intent is still valid. That check lives in our module.
 
-**Two lockfiles, and the deploy uses the one CLAUDE.md does not name.** The repo carries both
-`bun.lock` and `package-lock.json`. App Hosting installs with `npm ci`, which refuses to run
-at all when `package.json` and `package-lock.json` disagree. A `bun add` updates `bun.lock`
-only, so it breaks the deploy with `Missing: <pkg> from lock file` before the build even
-starts. Until the team picks one package manager, follow every `bun add` with
-`npm install --package-lock-only` and commit both lockfiles.
+**Use npm, never bun.** This already broke a deploy once. App Hosting installs with `npm ci`,
+which refuses to run at all when `package.json` and `package-lock.json` disagree — it fails
+with `Missing: <pkg> from lock file` before the build even starts, so the error looks nothing
+like a dependency problem. `bun.lock` and `bunfig.toml` have been deleted to remove the
+ambiguity. Install with `npm install` and commit `package-lock.json` with the change.
 
 **Gas coins get merged back into one.** Running PTBs from the CLI consolidates the wallet's
 SUI, silently undoing the multi-coin defence above. Check `sui client gas` shows several rows
@@ -367,9 +366,28 @@ entity.** Do not write anything that reads as a legal claim.
 ## Stack
 
 TanStack Start + TanStack Router, React 19, Vite, Tailwind v4, shadcn/ui, Zod.
-QR via `qrcode` and `@zxing/browser`. Package manager: bun.
+QR via `qrcode` and `@zxing/browser`.
 
-Scripts: `bun run dev`, `bun run build`, `bun run lint`, `bun run format`.
+**Package manager: npm.** `package-lock.json` is the only lockfile — `bun.lock` and
+`bunfig.toml` were removed because App Hosting deploys with `npm ci`, and having two lockfiles
+meant a `bun add` silently broke the deploy with `Missing: <pkg> from lock file` before the
+build even started. Do not reintroduce bun.
+
+Scripts: `npm run dev`, `npm run build`, `npm run lint`, `npm run format`.
+
+Node 22 or newer (`engines` in `package.json`). `@zxing/library` declares it wants Node 24;
+that is advisory and the build passes on 22.
+
+> Removing `bunfig.toml` gave up its `minimumReleaseAge = 86400` setting, which refused any
+> package version published in the last 24 hours — a cheap supply-chain guard npm has no
+> direct equivalent for. Keep the practice by hand: before adding a dependency, check the
+> version you are installing is at least a day old.
+
+`npm run lint` currently reports thousands of `Delete ␍` errors across the whole repo. That is
+a pre-existing line-ending mismatch — this clone has `core.autocrlf=true` while Prettier
+expects LF — not a code problem, and it affects files nobody has touched. Fixing it properly
+means adding a `.gitattributes` with `* text=auto eol=lf` and renormalising, which rewrites
+every file. Not worth doing mid-hackathon.
 
 Sui note: JSON-RPC is deprecated and now returns `-32601 Method not found` on **testnet**
 public fullnodes as well as mainnet — confirmed directly, not just documented. Use gRPC or
