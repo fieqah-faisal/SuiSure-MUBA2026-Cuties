@@ -7,6 +7,18 @@ moving on.
 **Rule for the agent: never invent an object ID, package ID, or coin type string.** If one is
 needed and not recorded in `src/config/sui.ts`, stop and ask.
 
+> ## Status: steps 0–6 are DONE. Start at step 7.
+>
+> The contract is published to testnet, 8 unit tests pass, both demo merchants are
+> registered, the Payment Kit registry exists, and four transaction digests are recorded in
+> the README — one successful payment and three rejections.
+>
+> **Do not re-run steps 0–6.** Republishing changes the package ID and orphans the registered
+> merchant credentials, breaking every ID in `src/config/sui.ts` and the README.
+>
+> Steps 0–6 below are kept as a record of how the current deployment was produced. The live
+> values are in `src/config/sui.ts`, which is the source of truth — not the examples here.
+
 ---
 
 ## Step 0 — Environment
@@ -104,15 +116,20 @@ Then register two demo merchants and record their credential object IDs.
 
 Add to the same module:
 
-- `PaymentIntent has key`, shared. Fields: `credential_id: ID`, `amount: u64`, `nonce: String`,
-  `expiry_ms: u64`, `paid: bool`, plus four display fields the frontend has no other on-chain
-  source for: `amount_myr: u64`, `description: String`, `order_ref: String`,
-  `created_at_ms: u64`
+- `PaymentIntent has key`, shared. Fields: `credential_id: ID`, `amount: u64`,
+  `amount_myr: u64`, `coin_type: ascii::String`, `nonce: ascii::String`,
+  `description: String`, `order_ref: String`, `expiry_ms: u64`, `created_at_ms: u64`,
+  `paid: bool`
 - `PaymentCompleted has copy, drop` event
-- `create_payment_intent(&MerchantCredential, amount, amount_myr, nonce, description,
-  order_ref, expiry_ms, &Clock, ctx)`
+- `SuiSureReceipt has key, store`, transferred to the payer
+- `create_payment_intent<T>(&MerchantCredential, amount, amount_myr, nonce, description,
+  order_ref, expiry_ms, &Clock, ctx)` — **generic**, so the request records the coin type it
+  must be settled in
 - `set_merchant_active(_: &AdminCap, credential: &mut MerchantCredential, active: bool)`
 - `pay_payment_intent<T>(...)` — generic over the coin type
+
+`nonce` and `coin_type` are `std::ascii::String`, not `std::string::String`. Payment Kit's
+nonce parameter is ASCII and the two types do not interchange.
 
 ### Why `PaymentIntent` carries display fields
 
@@ -148,6 +165,9 @@ const EMerchantInactive: u64 = 1;
 const ECredentialMismatch: u64 = 2;
 const EIntentExpired: u64 = 3;
 const EIntentAlreadyPaid: u64 = 4;
+const EInvalidNonce: u64 = 5;
+const EInvalidExpiry: u64 = 6;
+const ECoinTypeMismatch: u64 = 7;
 ```
 
 `pay_payment_intent<T>` takes `&MerchantCredential`, `&mut PaymentIntent`,
@@ -171,21 +191,28 @@ Add `payment_kit` as a dependency in `move/Move.toml` using the package ID from 
 
 ## Step 5 — Tests, including the failure cases
 
-Three of the five demo tests are failures, so they must be unit tests, not things discovered
+Most of the demo cases are failures, so they must be unit tests, not things discovered
 live on Saturday.
 
 Write Move unit tests covering:
 
-1. Happy path — valid payment succeeds, `paid` flips, event emitted
+1. Happy path — valid payment succeeds, `paid` flips, funds reach the merchant payout
 2. `EMerchantInactive` — inactive credential is rejected (deactivate it first with
    `set_merchant_active`)
 3. `EIntentExpired` — expired intent is rejected (advance the test clock)
 4. `EIntentAlreadyPaid` — paying twice is rejected
 5. `ECredentialMismatch` — passing a different merchant's credential is rejected
+6. `ECoinTypeMismatch` — paying with a coin type the request was not created for
+7. The payer owns a `SuiSureReceipt` afterwards
 
 Use `#[expected_failure(abort_code = ...)]` for the failure cases.
 
-**Acceptance:** `sui move test` passes with all five.
+Tests run against a **real** Payment Kit registry, not a stub: `payment_kit::init_for_testing`
+shares a Namespace and registry inside the scenario. Every test needs one, because
+`pay_payment_intent` takes `&mut PaymentRegistry` in its signature even when it aborts on the
+first assert.
+
+**Acceptance:** `sui move test` passes. Currently 8 tests, five of them failure cases.
 
 ---
 
@@ -231,11 +258,28 @@ The payment is one programmable transaction block:
    exactly match
 2. `moveCall` to `pay_payment_intent<T>` passing the split coin
 
-Agree this shape with her explicitly. Amounts are integers in the coin's smallest unit — SUI
-has 9 decimals, USDC has 6. Do not assume MIST.
+Argument order, verified against a real testnet payment:
 
-**Acceptance:** `mockMode` can be flipped to false and a real testnet payment completes from
-the UI with a working explorer link.
+```
+pay_payment_intent<T>(credential, intent, registry, coin, clock)
+```
+
+`clock` is the shared `0x6`. `T` must be the same coin type the intent was created with, or it
+aborts with `ECoinTypeMismatch` (7). The equivalent CLI call, which is known to work:
+
+```bash
+sui client ptb --split-coins @<coin> "[<exactAmount>]" --assign split --move-call <packageId>::payments::pay_payment_intent "<<coinType>>" @<credential> @<intent> @<registry> split.0 @0x6 --gas-budget 300000000
+```
+
+Amounts are integers in the coin's smallest unit — SUI has 9 decimals, USDC has 6, confirmed
+from on-chain coin metadata. Do not assume MIST. `amount_myr` is separate and is integer sen.
+
+**Acceptance:** a real testnet payment completes from the UI with a working explorer link.
+
+**Do not use `mockMode` as the switch.** It is only read by `zkLogin.service.ts` and
+`login.tsx`. `payment.service.ts` and `merchant.service.ts` never check it and return `MOCK_`
+data unconditionally, so setting it to false breaks login and changes nothing about payments.
+Going live means replacing those function bodies with calls into `src/services/sui/`.
 
 ---
 
@@ -243,15 +287,18 @@ the UI with a working explorer link.
 
 Everything below goes in `src/config/sui.ts` and the team chat:
 
-- [ ] `payment_kit` package ID
-- [ ] Sui testnet USDC coin type string
-- [ ] `PaymentRegistry` object ID
-- [ ] `RegistryAdminCap` object ID
-- [ ] `suisure::payments` package ID
-- [ ] `AdminCap` object ID
-- [ ] Two demo merchant credential object IDs
-- [ ] Exact `pay_payment_intent<T>` signature for the PTB
-- [ ] A sample transaction digest proving the flow works
+- [x] `payment_kit` package ID
+- [x] Sui testnet USDC coin type string, and its **6** decimals
+- [x] `PaymentRegistry` object ID
+- [x] `RegistryAdminCap` object ID
+- [x] `suisure::payments` package ID
+- [x] `AdminCap` object ID
+- [x] Two demo merchant credential object IDs
+- [x] Exact `pay_payment_intent<T>` signature for the PTB
+- [x] A sample transaction digest proving the flow works
+
+All of them are in `src/config/sui.ts`. Read them from there rather than from chat history —
+the package was republished once, so any ID posted before that is dead.
 
 ---
 

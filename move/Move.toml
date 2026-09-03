@@ -16,12 +16,15 @@ payment_kit = { git = "https://github.com/MystenLabs/sui-payment-kit.git", rev =
 # copy of payment_kit, leaving this module calling a package that the canonical
 # Namespace and PaymentRegistry know nothing about.
 #
-# `sui client upgrade` resolves it correctly on its own. Verified on a wiped
-# build directory: the upgrade dry run lists dependencies 0x1, 0x2 and
-# 0x7e069abe..1497, the canonical deployed payment_kit, with no duplicate.
+# Both `sui client publish` and `sui client upgrade` resolve it correctly on
+# their own. Verified on a wiped build directory: the dependency list comes back
+# as 0x1, 0x2 and 0x7e069abe..1497, the canonical deployed payment_kit, with no
+# duplicate. Only `sui client test-publish` refuses, which is a limitation of
+# that subcommand.
 #
-# So changes go out as upgrades, not republishes. That also preserves the
-# package ID and the registered merchant credentials.
+# Prefer upgrades where possible, since they preserve the package ID and the
+# registered merchant credentials. Adding a field to an existing struct is not
+# upgrade-compatible and forces a republish, which orphans both.
 #
 # Adding an [addresses] section switches the whole file to the legacy manifest
 # parser, where the modern [dep-replacements] section is silently ignored.

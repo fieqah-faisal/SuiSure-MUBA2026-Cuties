@@ -83,19 +83,35 @@ Related invariants:
 
 ## Current state
 
-Frontend is substantially built — ~1,750 lines of routes, ~650 lines of service adapters, QR
-generation and scanning wired in. **Everything below the UI is mocked.** `src/config/sui.ts`
-has `mockMode: true`. Each service is a clean interface with a simulated body, so going live
-means replacing function bodies without touching UI.
+The Move contract is **built, tested and live on testnet**. The website is **still entirely
+mocked** and does not touch the chain. Both halves of that sentence matter.
 
-Does not exist yet:
+Done:
 
-- `move/` — the Move package. Not started.
+- `move/` — `suisure::payments`, published to testnet. `sui move test` runs 8 tests, five of
+  them failure cases. Deployed IDs are in `src/config/sui.ts`; the README deployment section
+  carries the full list plus four verified transaction digests, one success and three
+  rejections.
+- Payment Kit registry created, `registry_managed_funds` confirmed false, so payments go
+  wallet to wallet and we stay non-custodial.
+- Two demo merchant credentials registered on chain.
+- `@mysten/sui` v2 installed; `src/services/sui/` holds a gRPC adapter.
+
+Not done:
+
+- **Nothing imports `src/services/sui/`.** The UI runs on `MOCK_` data end to end. Wiring the
+  adapter into `payment.service.ts` and `merchant.service.ts` is the whole remaining gap
+  between a working contract and a working demo.
 - `functions/` — the AI backend endpoint. Not started.
-- `@mysten/sui` and `@mysten/dapp-kit` — not in `package.json`. No blockchain code at all.
+- `@mysten/dapp-kit` — not installed. No wallet connection.
 - Real AI. `src/services/ai-assistant/ai.service.ts` is regex matching, not a model call.
-- Real transaction digests. `payment.service.ts` generates random strings, so receipt
-  explorer links currently 404.
+- Real transaction digests in the UI. `payment.service.ts` still generates random strings, so
+  receipt explorer links 404.
+
+> **`mockMode` does not do what its name suggests.** Only `zkLogin.service.ts` and
+> `login.tsx` read it. `payment.service.ts` and `merchant.service.ts` never check it and
+> return mock data unconditionally. Setting it to `false` breaks login and changes nothing
+> about payments. Do not treat flipping it as the switch to live.
 
 ---
 
@@ -122,9 +138,23 @@ Module `suisure::payments`, Sui Move 2024 edition. Generic over the coin type `T
 | Struct | Abilities | Ownership | Fields |
 |---|---|---|---|
 | `AdminCap` | `key, store` | Owned (deployer) | `id` |
-| `MerchantCredential` | `key` | **Shared** | `id`, `name`, `payout: address`, `active: bool` |
-| `PaymentIntent` | `key` | **Shared** | `id`, `credential_id: ID`, `amount: u64`, `nonce: String`, `expiry_ms: u64`, `paid: bool` |
-| `PaymentCompleted` | `copy, drop` | Event | intent ID, merchant, amount, payer |
+| `MerchantCredential` | `key` | **Shared** | `id`, `name: String`, `category: String`, `payout: address`, `active: bool` |
+| `PaymentIntent` | `key` | **Shared** | `id`, `credential_id: ID`, `amount: u64`, `amount_myr: u64`, `coin_type: ascii::String`, `nonce: ascii::String`, `description: String`, `order_ref: String`, `expiry_ms: u64`, `created_at_ms: u64`, `paid: bool` |
+| `PaymentCompleted` | `copy, drop` | Event | intent ID, credential ID, merchant, amount, payer |
+| `SuiSureReceipt` | `key, store` | Owned (**payer**) | proof of payment handed to the customer |
+
+`amount` is in the coin's smallest unit and is the figure enforced. `amount_myr` is **integer
+sen** for display only — Move has no floats, so RM12.50 is `1250`.
+
+`description` and `order_ref` are on chain deliberately. The review screen claims to show
+canonical Sui state, so anything it displays has to come from there.
+
+`nonce` and `coin_type` are `std::ascii::String`, not `std::string::String` — Payment Kit's
+nonce is ASCII, and mixing the two will not compile.
+
+Payment Kit's own `PaymentReceipt` cannot be given to the customer: it has no `key`, so it is
+a value rather than an object, and all its fields are private with no accessors. Hence
+`SuiSureReceipt`, built from values this module verified itself.
 
 Shared vs owned is a one-way decision. `MerchantCredential` and `PaymentIntent` must both be
 shared — the customer is a different party from the merchant and must read both.
@@ -132,9 +162,14 @@ shared — the customer is a different party from the merchant and must read bot
 ### Functions
 
 - `init(ctx)` — runs once at publish. Mints `AdminCap` to the deployer.
-- `register_merchant(_: &AdminCap, name, payout, ctx)` — shares a `MerchantCredential`.
-- `create_payment_intent(&MerchantCredential, amount, nonce, expiry_ms, ctx)` — shares a
-  `PaymentIntent`.
+- `register_merchant(_: &AdminCap, name, category, payout, ctx)` — shares a
+  `MerchantCredential`.
+- `set_merchant_active(_: &AdminCap, &mut MerchantCredential, active)` — switches a merchant
+  off without republishing.
+- `create_payment_intent<T>(&MerchantCredential, amount, amount_myr, nonce, description,
+  order_ref, expiry_ms, &Clock, ctx)` — shares a `PaymentIntent`. **Generic over `T`**, which
+  is how the request records the coin type it must be settled in; it also needs the `Clock`
+  for `created_at_ms`.
 - `pay_payment_intent<T>(...)` — the one that matters.
 
 There is no `msg.sender` modifier in Move. Requiring `&AdminCap` in the signature *is* the
@@ -148,33 +183,69 @@ Parameters: `&MerchantCredential`, `&mut PaymentIntent`, `&mut PaymentRegistry`,
 1. `assert!(credential.active, EMerchantInactive)`
 2. `assert!(intent.credential_id == object::id(credential), ECredentialMismatch)` — the caller
    could otherwise pass a different merchant's credential
-3. `assert!(clock.timestamp_ms() < intent.expiry_ms, EIntentExpired)`
-4. `assert!(!intent.paid, EIntentAlreadyPaid)`
-5. Read `payout = credential.payout` — **never from a parameter, never from the caller**
-6. Call `payment_kit::process_registry_payment<T>(registry, intent.nonce, intent.amount, coin,
-   option::some(payout), clock, ctx)`
-7. `intent.paid = true`
-8. `event::emit(PaymentCompleted { ... })`
+3. `assert!(intent.coin_type == type_name::with_defining_ids<T>().into_string(),
+   ECoinTypeMismatch)` — a request fixes an amount *and* a currency. Payment Kit only checks
+   that the coin's value matches the number, so without this any coin of equal numeric value,
+   including a worthless one, would settle it
+4. `assert!(clock.timestamp_ms() < intent.expiry_ms, EIntentExpired)`
+5. `assert!(!intent.paid, EIntentAlreadyPaid)`
+6. Read `payout = credential.payout` — **never from a parameter, never from the caller**
+7. Call `payment_kit::process_registry_payment<T>(registry, intent.nonce, intent.amount, coin,
+   option::some(payout), clock, ctx)` and discard the returned receipt
+8. `intent.paid = true`
+9. `event::emit(PaymentCompleted { ... })`, then transfer a `SuiSureReceipt` to the payer
 
-Every assert gets a named error constant. Three of our five demo tests are failure cases, so
-these codes become demo content — a transaction that fails with a legible on-screen reason is
-far more convincing than one that just fails.
+Order matters and is load-bearing: structural mismatches (wrong merchant, wrong currency) are
+caught before temporal ones (expired, already paid), so the reason shown on screen is the most
+specific one available.
+
+Error constants, all seven:
+
+| Code | Constant |
+|---|---|
+| 1 | `EMerchantInactive` |
+| 2 | `ECredentialMismatch` |
+| 3 | `EIntentExpired` |
+| 4 | `EIntentAlreadyPaid` |
+| 5 | `EInvalidNonce` |
+| 6 | `EInvalidExpiry` |
+| 7 | `ECoinTypeMismatch` |
+
+Five of our eight tests are failure cases, so these codes are demo content — a transaction
+that fails with a legible on-screen reason is far more convincing than one that just fails.
 
 ### Payment Kit reference
 
-```move
-public fun create_registry(namespace: &mut Namespace, name: String, ctx: &mut TxContext)
+Module path is `payment_kit::payment_kit` — package and module share a name.
 
+```move
+// Returns BOTH, unshared. PaymentRegistry has `key` but not `store`, so nothing outside
+// payment_kit can share it — you must call payment_kit::share in the same PTB.
+public fun create_registry(
+    namespace: &mut Namespace,
+    name: ascii::String,
+    ctx: &mut TxContext
+): (PaymentRegistry, RegistryAdminCap)
+
+public fun share(registry: PaymentRegistry)
+
+// Note the return value, and that nonce is std::ascii::String.
 public fun process_registry_payment<T>(
     registry: &mut PaymentRegistry,
-    nonce: String,
+    nonce: ascii::String,
     payment_amount: u64,
     coin: Coin<T>,
     receiver: Option<address>,
     clock: &Clock,
     ctx: &mut TxContext
-)
+): PaymentReceipt
 ```
+
+`PaymentReceipt` has `copy, drop, store` and **no `key`**, and none of its fields have public
+accessors — it can be discarded but not read or given to anyone.
+
+`payment_kit::init_for_testing(ctx)` is `#[test_only]` and shares a Namespace plus a registry,
+which is how our tests run against a real registry instead of a stub.
 
 Namespace objects:
 - testnet `0xa5016862fdccba7cc576b56cc5a391eda6775200aaa03a6b3c97d512312878db`
@@ -185,9 +256,23 @@ protection comes free. Keep our own `paid` flag anyway so the failure message is
 
 Its error conditions: `EDuplicatePayment`, `EPaymentAmountMismatch`.
 
-**The `payment_kit` package ID is not in this file on purpose.** Do not guess it. Resolve it
-by opening the testnet Namespace object above in a Sui explorer and reading which package owns
-its type, then record it in `move/Move.toml` and `src/config/sui.ts`.
+The `payment_kit` package ID is resolved and recorded in `src/config/sui.ts` as
+`paymentKitPackageId`. It was confirmed by reading the type of the testnet Namespace object
+above rather than taken on trust. Read it from config; never hardcode or guess it.
+
+**Depending on it has one sharp edge.** payment_kit's manifest declares
+`payment_kit = "0x0"` and records no published address anywhere, so some tooling treats it as
+unpublished. Observed on sui 1.79:
+
+- `sui client publish` and `sui client upgrade` **resolve it correctly** to the deployed
+  package. Verified on a wiped build directory: the dependency list comes back as `0x1`, `0x2`
+  and `0x7e069abe..1497`, with no duplicate.
+- `sui client test-publish` refuses with *"The package has unpublished dependencies"*. That is
+  a limitation of that subcommand, not a problem with the package.
+
+**Never pass `--with-unpublished-dependencies`.** It would deploy a *second copy* of
+payment_kit, and our module would then be calling a package that the canonical Namespace and
+`PaymentRegistry` know nothing about.
 
 ---
 
@@ -213,6 +298,21 @@ times so the demo wallet holds multiple separate gas coins.
 
 **Expiry is ours.** Payment Kit's `epoch_expiration_duration` governs deleting old records,
 not whether an intent is still valid. That check lives in our module.
+
+**Two lockfiles, and the deploy uses the one CLAUDE.md does not name.** The repo carries both
+`bun.lock` and `package-lock.json`. App Hosting installs with `npm ci`, which refuses to run
+at all when `package.json` and `package-lock.json` disagree. A `bun add` updates `bun.lock`
+only, so it breaks the deploy with `Missing: <pkg> from lock file` before the build even
+starts. Until the team picks one package manager, follow every `bun add` with
+`npm install --package-lock-only` and commit both lockfiles.
+
+**Gas coins get merged back into one.** Running PTBs from the CLI consolidates the wallet's
+SUI, silently undoing the multi-coin defence above. Check `sui client gas` shows several rows
+before demo day, not just a healthy total.
+
+**Reading Sui CLI output on Windows.** Piping `--json` into a script that decodes with the
+locale codepage mangles UTF-8 and invents corruption that is not on chain. Decode explicitly
+as UTF-8 before concluding a merchant name is broken.
 
 ---
 
@@ -271,8 +371,11 @@ QR via `qrcode` and `@zxing/browser`. Package manager: bun.
 
 Scripts: `bun run dev`, `bun run build`, `bun run lint`, `bun run format`.
 
-Sui note: JSON-RPC is deprecated and was disabled on mainnet full nodes in late July 2026 —
-use gRPC or GraphQL. The TypeScript SDK is on v2; older tutorials will not compile.
+Sui note: JSON-RPC is deprecated and now returns `-32601 Method not found` on **testnet**
+public fullnodes as well as mainnet — confirmed directly, not just documented. Use gRPC or
+GraphQL. `src/services/sui/client.ts` uses `SuiGrpcClient` from `@mysten/sui/grpc`; do not
+import from `@mysten/sui/jsonRpc`. The TypeScript SDK is on v2 (`@mysten/sui@2.x`); older
+tutorials will not compile.
 
 ---
 
