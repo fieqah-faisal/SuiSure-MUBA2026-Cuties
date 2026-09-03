@@ -1,0 +1,12 @@
+version: v1
+runConfig:
+  runCommand: node .output/server/index.mjs
+metadata:
+  framework: nitro
+  frameworkVersion: 3.0.260603-beta
+  adapterPackageName: nitro
+  adapterVersion: 3.0.260603-beta
+outputFiles:
+  serverApp:
+    include:
+      - .output
