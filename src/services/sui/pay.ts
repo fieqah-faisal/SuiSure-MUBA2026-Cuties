@@ -17,8 +17,16 @@ export interface BuildPaymentInput {
   amountBaseUnits: bigint;
   /** Full coin type, e.g. `0x...::usdc::USDC`. */
   coinType: string;
-  /** Coin object IDs the payer owns of `coinType`. Ignored when paying in SUI. */
-  paymentCoinIds: string[];
+  /**
+   * The payer's coins of `coinType`, exactly as `listPayerCoins` returns them.
+   * Ignored when paying in SUI, where the split comes off the gas coin.
+   */
+  paymentCoins: PayerCoin[];
+}
+
+export interface PayerCoin {
+  objectId: string;
+  balance: bigint;
 }
 
 /**
@@ -43,15 +51,35 @@ export const buildPaymentTransaction = (input: BuildPaymentInput): Transaction =
   if (input.coinType === SUI_COIN_TYPE) {
     source = tx.gas;
   } else {
-    const [primary, ...rest] = input.paymentCoinIds;
+    // Largest first, so the common case needs no merge at all.
+    const sorted = [...input.paymentCoins].sort((a, b) => (a.balance < b.balance ? 1 : -1));
+    const total = sorted.reduce((sum, coin) => sum + coin.balance, 0n);
+    if (total < input.amountBaseUnits) {
+      throw new Error(
+        `Not enough ${input.coinType.split("::").pop() ?? "balance"} to pay this request. ` +
+          `Need ${input.amountBaseUnits}, wallet holds ${total}.`,
+      );
+    }
+
+    // Take only as many coins as the amount needs rather than merging the whole
+    // wallet into one object.
+    const needed: PayerCoin[] = [];
+    let running = 0n;
+    for (const coin of sorted) {
+      needed.push(coin);
+      running += coin.balance;
+      if (running >= input.amountBaseUnits) break;
+    }
+
+    const [primary, ...rest] = needed;
     if (!primary) {
       throw new Error(`No ${input.coinType} coins available to pay with.`);
     }
-    source = tx.object(primary);
+    source = tx.object(primary.objectId);
     if (rest.length > 0) {
       tx.mergeCoins(
         source,
-        rest.map((id) => tx.object(id)),
+        rest.map((coin) => tx.object(coin.objectId)),
       );
     }
   }
@@ -78,7 +106,7 @@ export const buildPaymentTransaction = (input: BuildPaymentInput): Transaction =
 export const listPayerCoins = async (
   owner: string,
   coinType: string,
-): Promise<{ objectId: string; balance: bigint }[]> => {
+): Promise<PayerCoin[]> => {
   const response = await suiClient.core.listCoins({ owner, coinType });
   return response.objects.map((coin) => ({
     objectId: coin.objectId,
