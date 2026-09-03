@@ -6,6 +6,10 @@ module suisure::payments_tests {
     use sui::coin::{Self, Coin};
     use sui::sui::SUI;
     use sui::test_scenario as ts;
+
+    /// A stand-in for "some other coin an attacker happens to hold". Its only
+    /// job is to be a different type from SUI while carrying the same value.
+    public struct WORTHLESS has drop {}
     use payment_kit::payment_kit::{Self as kit, PaymentRegistry};
     use suisure::payments::{Self, AdminCap, MerchantCredential, PaymentIntent, SuiSureReceipt};
 
@@ -58,7 +62,7 @@ module suisure::payments_tests {
     fun create_intent(scenario: &mut ts::Scenario, credential_id: ID, clock: &Clock) {
         ts::next_tx(scenario, ADMIN);
         let credential = ts::take_shared_by_id<MerchantCredential>(scenario, credential_id);
-        payments::create_payment_intent(
+        payments::create_payment_intent<SUI>(
             &credential,
             AMOUNT,
             AMOUNT_MYR,
@@ -374,6 +378,44 @@ module suisure::payments_tests {
             assert!(payments::receipt_merchant(&receipt) == PAYOUT_A, 1);
             assert!(payments::receipt_amount(&receipt) == AMOUNT, 2);
             ts::return_to_sender(&scenario, receipt);
+        };
+
+        clock::destroy_for_testing(clock);
+        ts::end(scenario);
+    }
+    #[test]
+    #[expected_failure(abort_code = payments::ECoinTypeMismatch)]
+    fun pay_fails_with_the_wrong_coin_type() {
+        let mut scenario = begin();
+        let credential_id = register(&mut scenario, b"Kopitiam Seri Damai", PAYOUT_A);
+        let mut clock = new_clock(&mut scenario);
+        // The request is created for SUI.
+        create_intent(&mut scenario, credential_id, &clock);
+
+        // Paying it with a different coin of the same numeric value must abort.
+        // Payment Kit only checks that the coin's value equals the amount, never
+        // its type, so this assert is the only thing standing between a merchant
+        // and being paid in a token somebody minted for free.
+        ts::next_tx(&mut scenario, PAYER);
+        {
+            let credential =
+                ts::take_shared_by_id<MerchantCredential>(&scenario, credential_id);
+            let mut intent = ts::take_shared<PaymentIntent>(&scenario);
+            let mut registry = ts::take_shared<PaymentRegistry>(&scenario);
+            let coin = coin::mint_for_testing<WORTHLESS>(AMOUNT, ts::ctx(&mut scenario));
+
+            payments::pay_payment_intent<WORTHLESS>(
+                &credential,
+                &mut intent,
+                &mut registry,
+                coin,
+                &clock,
+                ts::ctx(&mut scenario),
+            );
+
+            ts::return_shared(registry);
+            ts::return_shared(intent);
+            ts::return_shared(credential);
         };
 
         clock::destroy_for_testing(clock);

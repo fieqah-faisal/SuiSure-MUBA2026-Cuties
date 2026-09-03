@@ -26,6 +26,8 @@ module suisure::payments {
     const EInvalidNonce: u64 = 5;
     /// Expiry is not in the future.
     const EInvalidExpiry: u64 = 6;
+    /// The coin being paid is not the coin the request was created for.
+    const ECoinTypeMismatch: u64 = 7;
 
     /// Publisher capability, minted once to the deployer.
     ///
@@ -69,6 +71,11 @@ module suisure::payments {
         credential_id: ID,
         amount: u64,
         amount_myr: u64,
+        /// The coin type this request must be settled in, as recorded at
+        /// creation. Without it the request would fix an amount but not a
+        /// currency, and any coin with a matching numeric value -- including a
+        /// worthless one -- would settle it.
+        coin_type: ascii::String,
         nonce: ascii::String,
         description: String,
         order_ref: String,
@@ -149,7 +156,7 @@ module suisure::payments {
     /// Anyone may call this against a shared credential. That is not a hole:
     /// funds still go only to `credential.payout`, so the worst case is an
     /// unwanted request to pay the merchant.
-    public fun create_payment_intent(
+    public fun create_payment_intent<T>(
         credential: &MerchantCredential,
         amount: u64,
         amount_myr: u64,
@@ -171,6 +178,7 @@ module suisure::payments {
             credential_id: object::id(credential),
             amount,
             amount_myr,
+            coin_type: type_name::with_defining_ids<T>().into_string(),
             nonce,
             description,
             order_ref,
@@ -197,19 +205,27 @@ module suisure::payments {
         //    otherwise a caller could pass a different merchant's credential
         //    and redirect the payout.
         assert!(intent.credential_id == object::id(credential), ECredentialMismatch);
-        // 3. Expiry is ours to enforce. Payment Kit's own expiration setting
+        // 3. The coin must be the one the request was created for. Payment Kit
+        //    checks that the coin's *value* equals the amount but never checks
+        //    its type, so without this a request for 2.55 USDC could be settled
+        //    with 2.55 units of any token at all.
+        assert!(
+            intent.coin_type == type_name::with_defining_ids<T>().into_string(),
+            ECoinTypeMismatch,
+        );
+        // 4. Expiry is ours to enforce. Payment Kit's own expiration setting
         //    governs deleting old records, not whether a request is still valid.
         assert!(clock.timestamp_ms() < intent.expiry_ms, EIntentExpired);
-        // 4. Payment Kit also blocks duplicates, but keeping our own flag makes
+        // 5. Payment Kit also blocks duplicates, but keeping our own flag makes
         //    the failure legible on screen.
         assert!(!intent.paid, EIntentAlreadyPaid);
 
-        // 5. The payout address comes from the credential. Never a parameter,
+        // 6. The payout address comes from the credential. Never a parameter,
         //    never the caller, never the QR.
         let payout = credential.payout;
         let intent_id = object::id(intent);
 
-        // 6. Hand off to the cashier. The receipt is droppable; the registry
+        // 7. Hand off to the cashier. The receipt is droppable; the registry
         //    keeps the authoritative payment record.
         let _ = kit::process_registry_payment<T>(
             registry,
@@ -221,10 +237,10 @@ module suisure::payments {
             ctx,
         );
 
-        // 7. Mark paid.
+        // 8. Mark paid.
         intent.paid = true;
 
-        // 8. Emit.
+        // 9. Emit.
         event::emit(PaymentCompleted {
             intent_id,
             credential_id: intent.credential_id,
@@ -233,7 +249,7 @@ module suisure::payments {
             payer: ctx.sender(),
         });
 
-        // 9. Hand the customer an object they own as proof of payment.
+        // 10. Hand the customer an object they own as proof of payment.
         transfer::transfer(
             SuiSureReceipt {
                 id: object::new(ctx),
@@ -282,6 +298,10 @@ module suisure::payments {
 
     public fun intent_nonce(intent: &PaymentIntent): ascii::String {
         intent.nonce
+    }
+
+    public fun intent_coin_type(intent: &PaymentIntent): ascii::String {
+        intent.coin_type
     }
 
     public fun intent_expiry_ms(intent: &PaymentIntent): u64 {
