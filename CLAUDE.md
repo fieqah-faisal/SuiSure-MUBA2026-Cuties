@@ -375,6 +375,12 @@ build even started. Do not reintroduce bun.
 
 Scripts: `npm run dev`, `npm run build`, `npm run lint`, `npm run format`.
 
+`npm run verify:chain` reads every value in `src/config/sui.ts` back off testnet and confirms
+it is really there and in the state we claim — package, registry, both merchants, the standing
+payment requests, wallet funding — then builds a real payment and simulates it, exercising the
+whole path without spending anything. Exits non-zero on failure. Run it before any demo, and
+whenever something looks wrong, before debugging anything else.
+
 Node 22 or newer (`engines` in `package.json`). `@zxing/library` declares it wants Node 24;
 that is advisory and the build passes on 22.
 

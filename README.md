@@ -147,6 +147,16 @@ rejection.
 | 6 | `EInvalidExpiry` | Expiry is not in the future |
 | 7 | `ECoinTypeMismatch` | Coin offered is not the coin the request was created for |
 
+### Verifying the deployment
+
+```bash
+npm run verify:chain
+```
+
+Reads every value in this section back off testnet, confirms the merchants are active, the
+registry is still non-custodial and the demo requests are still payable, then builds a payment
+and simulates it. Nothing is spent. Exits non-zero if anything is wrong.
+
 ### Building
 
 ```bash

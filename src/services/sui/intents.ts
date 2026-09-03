@@ -26,9 +26,10 @@ export interface OnChainPaymentIntent {
 }
 
 /**
- * PaymentIntent was introduced by the upgrade, so on chain it reports the
- * *upgraded* package ID, not the original one — unlike MerchantCredential.
- * `isSuiSureType` accepts either, which is why it exists.
+ * Matched through `isSuiSureType` rather than a hardcoded type string. Since
+ * the republish every struct is defined in one package version, so they all
+ * report the same ID — but a future upgrade would split them again, and that
+ * helper is the single place that would need to know about both.
  */
 export const PAYMENT_INTENT_STRUCT = "PaymentIntent" as const;
 
