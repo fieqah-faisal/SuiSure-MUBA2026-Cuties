@@ -8,6 +8,7 @@
 module suisure::payments {
     use std::ascii;
     use std::string::String;
+    use std::type_name;
     use sui::clock::Clock;
     use sui::coin::Coin;
     use sui::event;
@@ -82,6 +83,28 @@ module suisure::payments {
         merchant: address,
         amount: u64,
         payer: address,
+    }
+
+    /// A receipt the customer actually owns, transferred to the payer.
+    ///
+    /// Payment Kit's own `PaymentReceipt` cannot be used for this. It has no
+    /// `key`, so it is a plain value rather than an object, and every one of its
+    /// fields is private with no public accessor, so it cannot even be read.
+    /// These fields are therefore built from the values this module verified on
+    /// the way through — which is the stronger source anyway, since they are the
+    /// ones the asserts above were checked against.
+    public struct SuiSureReceipt has key, store {
+        id: UID,
+        intent_id: ID,
+        credential_id: ID,
+        merchant: address,
+        merchant_name: String,
+        amount: u64,
+        amount_myr: u64,
+        coin_type: ascii::String,
+        nonce: ascii::String,
+        payer: address,
+        paid_at_ms: u64,
     }
 
     /// Runs once at publish. Mints the `AdminCap` to the deployer.
@@ -209,6 +232,24 @@ module suisure::payments {
             amount: intent.amount,
             payer: ctx.sender(),
         });
+
+        // 9. Hand the customer an object they own as proof of payment.
+        transfer::transfer(
+            SuiSureReceipt {
+                id: object::new(ctx),
+                intent_id,
+                credential_id: intent.credential_id,
+                merchant: payout,
+                merchant_name: credential.name,
+                amount: intent.amount,
+                amount_myr: intent.amount_myr,
+                coin_type: type_name::with_defining_ids<T>().into_string(),
+                nonce: intent.nonce,
+                payer: ctx.sender(),
+                paid_at_ms: clock.timestamp_ms(),
+            },
+            ctx.sender(),
+        );
     }
 
     public fun name(credential: &MerchantCredential): String {
@@ -253,6 +294,26 @@ module suisure::payments {
 
     public fun intent_is_paid(intent: &PaymentIntent): bool {
         intent.paid
+    }
+
+    public fun receipt_intent_id(receipt: &SuiSureReceipt): ID {
+        receipt.intent_id
+    }
+
+    public fun receipt_merchant(receipt: &SuiSureReceipt): address {
+        receipt.merchant
+    }
+
+    public fun receipt_amount(receipt: &SuiSureReceipt): u64 {
+        receipt.amount
+    }
+
+    public fun receipt_payer(receipt: &SuiSureReceipt): address {
+        receipt.payer
+    }
+
+    public fun receipt_coin_type(receipt: &SuiSureReceipt): ascii::String {
+        receipt.coin_type
     }
 
     /// `init` only runs at publish, so tests need their own way in.

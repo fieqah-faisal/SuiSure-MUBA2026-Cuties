@@ -7,7 +7,7 @@ module suisure::payments_tests {
     use sui::sui::SUI;
     use sui::test_scenario as ts;
     use payment_kit::payment_kit::{Self as kit, PaymentRegistry};
-    use suisure::payments::{Self, AdminCap, MerchantCredential, PaymentIntent};
+    use suisure::payments::{Self, AdminCap, MerchantCredential, PaymentIntent, SuiSureReceipt};
 
     const ADMIN: address = @0xAD;
     const PAYER: address = @0xFEE;
@@ -331,6 +331,49 @@ module suisure::payments_tests {
             let received = ts::take_from_address<Coin<SUI>>(&scenario, PAYOUT_A);
             assert!(coin::value(&received) == AMOUNT, 4);
             ts::return_to_address(PAYOUT_A, received);
+        };
+
+        clock::destroy_for_testing(clock);
+        ts::end(scenario);
+    }
+
+    #[test]
+    fun payer_owns_a_receipt_after_paying() {
+        let mut scenario = begin();
+        let credential_id = register(&mut scenario, b"Kopitiam Seri Damai", PAYOUT_A);
+        let mut clock = new_clock(&mut scenario);
+        create_intent(&mut scenario, credential_id, &clock);
+
+        ts::next_tx(&mut scenario, PAYER);
+        {
+            let credential =
+                ts::take_shared_by_id<MerchantCredential>(&scenario, credential_id);
+            let mut intent = ts::take_shared<PaymentIntent>(&scenario);
+            let mut registry = ts::take_shared<PaymentRegistry>(&scenario);
+            let coin = coin::mint_for_testing<SUI>(AMOUNT, ts::ctx(&mut scenario));
+
+            payments::pay_payment_intent<SUI>(
+                &credential,
+                &mut intent,
+                &mut registry,
+                coin,
+                &clock,
+                ts::ctx(&mut scenario),
+            );
+
+            ts::return_shared(registry);
+            ts::return_shared(intent);
+            ts::return_shared(credential);
+        };
+
+        // The payer, not the merchant and not the registry, owns the receipt.
+        ts::next_tx(&mut scenario, PAYER);
+        {
+            let receipt = ts::take_from_sender<SuiSureReceipt>(&scenario);
+            assert!(payments::receipt_payer(&receipt) == PAYER, 0);
+            assert!(payments::receipt_merchant(&receipt) == PAYOUT_A, 1);
+            assert!(payments::receipt_amount(&receipt) == AMOUNT, 2);
+            ts::return_to_sender(&scenario, receipt);
         };
 
         clock::destroy_for_testing(clock);
