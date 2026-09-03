@@ -90,6 +90,20 @@ The contract is generic over the coin type, so the same package settles in SUI b
 changing one type argument. A payment request records the coin it must be settled
 in, so being generic does not mean being loose about which currency arrives.
 
+### Standing demo requests
+
+Two unpaid payment requests, valid until **10 September 2026**, for testing without creating
+one first. Both are denominated in USDC.
+
+| Merchant | Amount | Payment intent |
+| --- | --- | --- |
+| Kopitiam Seri Damai | RM12.00 / 2.553191 USDC | `0x204dc2dfc0a8eabb9d7730a7e89c5d979fc686991d6579b06d6bf03eb0c57fa7` |
+| Campus Café | RM8.00 / 1.702128 USDC | `0x005ecc8f3445bdbd84830a1701b681c126aa41ae8325d8946350e3746572772e` |
+
+Paying one marks it paid permanently, and a second attempt is rejected with
+`EIntentAlreadyPaid`. That is the intended behaviour, not a broken fixture — create a
+replacement with `create_payment_intent<T>`.
+
 ### Verified transactions
 
 All four are real testnet transactions and can be opened by anyone.

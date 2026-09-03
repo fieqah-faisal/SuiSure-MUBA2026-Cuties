@@ -84,6 +84,21 @@ export const SUI_CONFIG = {
    */
   upgradeCapId: "0xd26f7d957bf698eeeff291a720df444a6090a86e9d0bd4648ae2ec9a8241d2c0" as string,
   /**
+   * Pre-made unpaid payment requests for demoing and testing, valid until
+   * 10 September 2026 — past both the 5 September submission and the
+   * 6 September pitch. Both are USDC.
+   *
+   *   [0] Kopitiam Seri Damai — RM12.00 / 2.553191 USDC — DEMO-KOPI-01
+   *   [1] Campus Cafe         — RM8.00  / 1.702128 USDC — DEMO-CAFE-01
+   *
+   * Paying one marks it paid permanently. Create replacements with
+   * create_payment_intent<T> rather than expecting to reuse these.
+   */
+  demoIntentIds: [
+    "0x204dc2dfc0a8eabb9d7730a7e89c5d979fc686991d6579b06d6bf03eb0c57fa7",
+    "0x005ecc8f3445bdbd84830a1701b681c126aa41ae8325d8946350e3746572772e",
+  ] as string[],
+  /**
    * A completed end-to-end payment on testnet, proving the whole flow:
    * 2.553191 USDC (RM12.00) from the payer to Kopitiam Seri Damai's
    * registered payout address, via payment_kit. Step 6.
