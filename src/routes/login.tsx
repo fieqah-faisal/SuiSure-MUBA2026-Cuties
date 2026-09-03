@@ -1,3 +1,4 @@
+import { useCurrentAccount } from "@mysten/dapp-kit-react";
 import { ConnectButton } from "@mysten/dapp-kit-react/ui";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { AlertCircle, Loader2 } from "lucide-react";
@@ -30,16 +31,22 @@ export const Route = createFileRoute("/login")({
 function WalletConnectOption() {
   return (
     <div className="suisure-wallet-connect">
-      <ConnectButton />
+      <ConnectButton className="suisure-wallet-connect-control" style={{ display: "block", width: "100%" }} />
     </div>
   );
 }
 
 function LoginPage() {
-  const { account, signIn, ready } = useSession();
+  const { account, signIn, signInWithWallet, ready } = useSession();
+  const walletAccount = useCurrentAccount();
+  const walletAddress = walletAccount?.address;
   const navigate = useNavigate();
   const [pending, setPending] = useState<AuthProvider | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (walletAddress) signInWithWallet(walletAddress);
+  }, [walletAddress, signInWithWallet]);
 
   useEffect(() => {
     if (ready && account) void navigate({ to: "/app" });

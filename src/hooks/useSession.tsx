@@ -1,3 +1,4 @@
+import { useDAppKit } from "@mysten/dapp-kit-react";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { SUI_CONFIG } from "@/config/sui";
@@ -22,6 +23,7 @@ interface SessionValue {
   balance: number;
   balanceToken: string;
   signIn: (provider: AuthProvider) => Promise<void>;
+  signInWithWallet: (address: string) => void;
   signOut: () => Promise<void>;
   clearLocalData: () => void;
   refreshBalance: () => Promise<void>;
@@ -30,6 +32,7 @@ interface SessionValue {
 const SessionContext = createContext<SessionValue | null>(null);
 
 export function SessionProvider({ children }: { children: ReactNode }) {
+  const dAppKit = useDAppKit();
   const [ready, setReady] = useState(false);
   const [account, setAccount] = useState<SuiAccount | null>(null);
   const [credential, setCredential] = useState<MerchantCredential | null>(null);
@@ -79,12 +82,23 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setAccount(acc);
   }, []);
 
+  const signInWithWallet = useCallback((address: string) => {
+    const walletSession: SuiAccount = {
+      address,
+      provider: "wallet",
+      displayName: "Sui Wallet User",
+    };
+    persistence.write("session", walletSession);
+    setAccount(walletSession);
+  }, []);
+
   const signOut = useCallback(async () => {
+    if (account?.provider === "wallet") await dAppKit.disconnectWallet();
     await zkLoginService.signOut();
     persistence.remove("session");
     setAccount(null);
     setViewMode("customer");
-  }, []);
+  }, [account?.provider, dAppKit]);
 
   const setDevMerchantOverride = useCallback((value: boolean) => {
     persistence.write("role-override", value);
@@ -92,11 +106,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const clearLocalData = useCallback(() => {
+    if (account?.provider === "wallet") void dAppKit.disconnectWallet();
     persistence.clearAll();
     setAccount(null);
     setDevOverride(false);
     setViewMode("customer");
-  }, []);
+  }, [account?.provider, dAppKit]);
 
   const value = useMemo<SessionValue>(
     () => ({
@@ -112,11 +127,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       balance,
       balanceToken,
       signIn,
+      signInWithWallet,
       signOut,
       clearLocalData,
       refreshBalance,
     }),
-    [ready, account, credential, viewMode, devMerchantOverride, setDevMerchantOverride, networkStatus, balance, balanceToken, signIn, signOut, clearLocalData, refreshBalance],
+    [ready, account, credential, viewMode, devMerchantOverride, setDevMerchantOverride, networkStatus, balance, balanceToken, signIn, signInWithWallet, signOut, clearLocalData, refreshBalance],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
