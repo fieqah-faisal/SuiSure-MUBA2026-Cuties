@@ -1,12 +1,10 @@
-import { useCurrentAccount, useCurrentNetwork } from "@mysten/dapp-kit-react";
 import { ConnectButton } from "@mysten/dapp-kit-react/ui";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { AlertCircle, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { SuiSureLogo } from "@/components/brand/Logo";
 import { Button } from "@/components/ui/button";
-import { SUI_CONFIG, shortAddress } from "@/config/sui";
 import { useSession } from "@/hooks/useSession";
 import type { AuthProvider } from "@/services/auth/zkLogin.service";
 
@@ -29,35 +27,10 @@ export const Route = createFileRoute("/login")({
   component: LoginPage,
 });
 
-function WalletConnectionProof() {
-  const walletAccount = useCurrentAccount();
-  const network = useCurrentNetwork();
-
+function WalletConnectOption() {
   return (
-    <div className="rounded-2xl border border-border bg-card p-4">
-      <div className="flex justify-center">
-        <ConnectButton />
-      </div>
-
-      {walletAccount ? (
-        <div
-          role="status"
-          className="mt-3 rounded-xl bg-success-soft px-4 py-3 text-sm text-success"
-        >
-          <div className="flex items-center gap-2 font-semibold">
-            <CheckCircle2 className="h-4 w-4" />
-            Wallet connected
-          </div>
-          <p className="mt-2 font-mono text-xs">
-            {shortAddress(walletAccount.address, 10, 6)}
-          </p>
-          <p className="mt-1 text-xs">Network: {network}</p>
-        </div>
-      ) : (
-        <p className="mt-3 text-center text-xs text-muted-foreground">
-          Connect a Sui-compatible wallet and select Sui Testnet.
-        </p>
-      )}
+    <div className="suisure-wallet-connect">
+      <ConnectButton />
     </div>
   );
 }
@@ -129,13 +102,12 @@ function LoginPage() {
           <Button size="lg" variant="outline" className="w-full" disabled>
             Continue with Facebook (coming soon)
           </Button>
-          <WalletConnectionProof />
+          <WalletConnectOption />
         </div>
 
         <p className="mt-6 text-xs leading-relaxed text-muted-foreground">
           By continuing you agree to the SuiSure Terms of Service and Privacy Notice. Authentication
-          uses Sui zkLogin.{" "}
-          {SUI_CONFIG.mockMode ? "zkLogin currently runs in mock mode for development." : null}
+          uses Sui zkLogin.
         </p>
       </main>
     </div>
