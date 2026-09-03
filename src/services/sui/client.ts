@@ -48,24 +48,33 @@ export const senToMyr = (sen: bigint | string | number): number => Number(BigInt
 /** MYR to integer sen. */
 export const myrToSen = (myr: number): bigint => BigInt(Math.round(myr * 100));
 
+/**
+ * Coin types come back from chain without the `0x` prefix on the address —
+ * `a1ec…::usdc::USDC`, not `0xa1ec…::usdc::USDC` — while config and type
+ * arguments carry it. Compare only normalized forms.
+ */
+export const normalizeCoinType = (coinType: string): string => {
+  const [address, ...rest] = coinType.split("::");
+  if (!address || rest.length !== 2) return coinType;
+  return [normalizeAddress(address), ...rest].join("::");
+};
+
 /** Full 32-byte lowercase form, so short and padded addresses compare equal. */
 export const normalizeAddress = (address: string): string =>
   `0x${address.replace(/^0x/, "").toLowerCase().padStart(64, "0")}`;
 
-const KNOWN_PACKAGE_IDS = new Set(
-  [SUI_CONFIG.packageId, SUI_CONFIG.originalPackageId].filter(Boolean).map(normalizeAddress),
-);
-
 /**
- * True if `type` is `<one of our packages>::payments::<structName>`.
+ * Package IDs whose `payments` module we accept types from.
  *
- * A struct's type is anchored to the package version that *first defined it*,
- * not to the original package ID. MerchantCredential existed at first publish so
- * it reports the original ID; PaymentIntent and SuiSureReceipt were introduced
- * by the upgrade so they report the upgraded ID. Hardcoding either one gets the
- * other wrong, so match on module and struct and accept any package we shipped.
- * Adding a future package ID here is then the only change an upgrade needs.
+ * A struct's type is anchored to the package version that *first defined it*.
+ * Every struct is defined in the current package, so one ID is enough today. An
+ * upgrade would split this again — structs defined before it keep reporting the
+ * current ID while new ones report the upgraded ID — and this array is then the
+ * only place that needs both.
  */
+const KNOWN_PACKAGE_IDS = new Set([SUI_CONFIG.packageId].map(normalizeAddress));
+
+/** True if `type` is `<our package>::payments::<structName>`. */
 export const isSuiSureType = (type: string, structName: string): boolean => {
   const [address, moduleName, name] = type.split("::");
   if (!address || !moduleName || !name) return false;

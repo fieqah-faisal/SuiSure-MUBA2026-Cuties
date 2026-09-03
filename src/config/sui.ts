@@ -65,34 +65,30 @@ export const SUI_CONFIG = {
   registryAdminCapId:
     "0x51307731279cfe0c9a8d324bce95d15d48a03c20a1b6c1ba0f24fea78c96b631" as string,
   /**
-   * Latest suisure::payments package ID — the one to call functions on.
-   * Changes on every upgrade, so always read it from here.
-   */
-  packageId: "0x428e043100e7c4e6a0efed67a7b49f1537bd7bc25a58f6294832de7eda63713b" as string,
-  /**
-   * The first-published package ID, which never changes.
+   * suisure::payments package ID.
    *
-   * Needed because a struct's type is anchored to the package version that
-   * first defined it. MerchantCredential existed at first publish and reports
-   * this ID; PaymentIntent and SuiSureReceipt were added by the upgrade and
-   * report `packageId`. Neither ID alone matches every type, so use
-   * `isSuiSureType` in src/services/sui/client.ts rather than comparing against
-   * one of them. Move calls always go to `packageId`.
+   * One ID, not two. An earlier deployment was upgraded, which split calls
+   * (latest ID) from type identity (whichever version first defined each
+   * struct). The republish that added coin_type defines every struct in this
+   * one version, so both uses collapse back to this single value. If the
+   * package is ever upgraded again, types defined before that upgrade keep
+   * reporting this ID while newly added ones report the upgraded ID, and
+   * isSuiSureType in src/services/sui/client.ts will need both.
    */
-  originalPackageId: "0x0a855f30c0979bad86c200847ea61c6befafde3a4769d771c539a4031e980a00" as string,
+  packageId: "0xac4bbcadef19c4687a75bda3afa31e069473e8824d43d771f7c5c36fee1dd445" as string,
   /** AdminCap object ID minted to the deployer at publish. Steps 3 and 6. */
-  adminCapId: "0x2bf633f877f078e014a82940374242ddde81e23e4d42c657550c0096cb546264" as string,
+  adminCapId: "0x86c3aa4eba5ed7a26be369546037189dfdd7bae6999dd6434c5528e592c8742f" as string,
   /**
    * UpgradeCap for the package. Losing it means the package can never be
    * upgraded, only republished under a new ID.
    */
-  upgradeCapId: "0xf5488918e6932a74a31ed05837b6b9fdaed036b1106754bb20e9d2a59178c17b" as string,
+  upgradeCapId: "0xd26f7d957bf698eeeff291a720df444a6090a86e9d0bd4648ae2ec9a8241d2c0" as string,
   /**
    * A completed end-to-end payment on testnet, proving the whole flow:
    * 2.553191 USDC (RM12.00) from the payer to Kopitiam Seri Damai's
    * registered payout address, via payment_kit. Step 6.
    */
-  sampleTxDigest: "73FoxwgHirmKuDNcCWv4dmVcvNTimZW6ah42tYJ6wtit" as string,
+  sampleTxDigest: "FhtaB57tHhv5nrxKhQP4o1miyjhykFLYKDD6BCP3oQcw" as string,
   /**
    * Shared MerchantCredential object IDs for the demo merchants, in order:
    *   [0] Kopitiam Seri Damai — Food & Beverage
@@ -100,8 +96,8 @@ export const SUI_CONFIG = {
    * Steps 3 and 6.
    */
   merchantCredentialIds: [
-    "0x62152dd75cc21378c319741d75e114134fa2c7084c1e34bd6b75ff52bad338e0",
-    "0xf8ed47fba2d595be870747c23f5684db8787d432372e3bed7d8ebd69fd2ef21a",
+    "0x73ffe36c370cd0e768e85f59e3c53eba557a3ccc123992d8062f2cbcc063d68f",
+    "0xe0b13c411e139c254e8752f2bd4084d20f2767a31cca3cdeff47ad2175d234b3",
   ] as string[],
 } as const;
 

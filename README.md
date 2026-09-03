@@ -43,31 +43,18 @@ Payment Kit moves the funds, and this package supplies the recipient address by
 reading it from the merchant's on-chain credential rather than accepting it from
 the caller.
 
-### Package IDs
+### Package
 
-Two IDs, and they are **not interchangeable**.
+```
+0xac4bbcadef19c4687a75bda3afa31e069473e8824d43d771f7c5c36fee1dd445
+```
 
-| | ID |
-| --- | --- |
-| Latest — use for move calls | `0x428e043100e7c4e6a0efed67a7b49f1537bd7bc25a58f6294832de7eda63713b` |
-| Original — use for type identity | `0x0a855f30c0979bad86c200847ea61c6befafde3a4769d771c539a4031e980a00` |
-
-The package was published at the original ID and later upgraded, which changes the
-ID used to call functions. **Send every transaction to the latest ID.**
-
-Type identity is subtler, and worth getting right before it costs someone an hour:
-a struct is anchored to the package version that *first defined it*, not to the
-original package ID.
-
-| Struct | First defined | Reports |
-| --- | --- | --- |
-| `MerchantCredential` | first publish | `0x0a855f30…` |
-| `PaymentIntent` | upgrade | `0x428e0431…` |
-| `SuiSureReceipt` | upgrade | `0x428e0431…` |
-
-So matching object types or filtering events against one hardcoded package ID will
-silently miss one group or the other. Match on the module and struct name and accept
-either ID — `isSuiSureType` in `src/services/sui/client.ts` does exactly this.
+One ID, used both for move calls and for matching object types. A struct's type is
+anchored to the package version that first defined it, and every struct here is
+defined in this version. If the package is ever upgraded, that splits again —
+existing structs keep reporting this ID while newly added ones report the upgraded
+ID — and both are then needed. `isSuiSureType` in `src/services/sui/client.ts` is
+where that lives.
 
 ### On-chain objects
 
@@ -75,7 +62,8 @@ either ID — `isSuiSureType` in `src/services/sui/client.ts` does exactly this.
 | --- | --- |
 | PaymentRegistry (shared) | `0x3291fba65f6b24c4790727042b7198be9b0be43e3b88694a330cd4ad644e1691` |
 | RegistryAdminCap | `0x51307731279cfe0c9a8d324bce95d15d48a03c20a1b6c1ba0f24fea78c96b631` |
-| AdminCap | `0x2bf633f877f078e014a82940374242ddde81e23e4d42c657550c0096cb546264` |
+| AdminCap | `0x86c3aa4eba5ed7a26be369546037189dfdd7bae6999dd6434c5528e592c8742f` |
+| UpgradeCap | `0xd26f7d957bf698eeeff291a720df444a6090a86e9d0bd4648ae2ec9a8241d2c0` |
 | Payment Kit package | `0x7e069abe383e80d32f2aec17b3793da82aabc8c2edf84abbf68dd7b719e71497` |
 | Payment Kit Namespace | `0xa5016862fdccba7cc576b56cc5a391eda6775200aaa03a6b3c97d512312878db` |
 
@@ -87,8 +75,8 @@ and we never hold them.
 
 | Merchant | Credential | Payout |
 | --- | --- | --- |
-| Kopitiam Seri Damai | `0x62152dd75cc21378c319741d75e114134fa2c7084c1e34bd6b75ff52bad338e0` | `0xc3eb96f569be60172e576300218274998ad23a113357055a947942247da63309` |
-| Campus Café | `0xf8ed47fba2d595be870747c23f5684db8787d432372e3bed7d8ebd69fd2ef21a` | `0xa36de3707dd774f008d2e3639f310a11058201390fc2d3031c11d5215b5002dd` |
+| Kopitiam Seri Damai | `0x73ffe36c370cd0e768e85f59e3c53eba557a3ccc123992d8062f2cbcc063d68f` | `0xc3eb96f569be60172e576300218274998ad23a113357055a947942247da63309` |
+| Campus Café | `0xe0b13c411e139c254e8752f2bd4084d20f2767a31cca3cdeff47ad2175d234b3` | `0xa36de3707dd774f008d2e3639f310a11058201390fc2d3031c11d5215b5002dd` |
 
 ### Coin
 
@@ -99,29 +87,39 @@ Testnet USDC, **6 decimals** — not 9. Amounts are integers in the smallest uni
 ```
 
 The contract is generic over the coin type, so the same package settles in SUI by
-changing one type argument.
+changing one type argument. A payment request records the coin it must be settled
+in, so being generic does not mean being loose about which currency arrives.
 
 ### Verified transactions
 
-All three are real testnet transactions and can be opened by anyone.
+All four are real testnet transactions and can be opened by anyone.
 
-**A payment that succeeds** — 2.553191 USDC for an RM12.00 order.
+| | Digest | Result |
+| --- | --- | --- |
+| Payment succeeds | [`FhtaB57t…3oQcw`](https://suiscan.xyz/testnet/tx/FhtaB57tHhv5nrxKhQP4o1miyjhykFLYKDD6BCP3oQcw) | 2.553191 USDC delivered |
+| Replayed request | [`6Fp4Rd3v…b1icP`](https://suiscan.xyz/testnet/tx/6Fp4Rd3vckbRSpyrz9rMPwer4d2jCWtFHvMyLxRb1icP) | aborts, code **4** |
+| Swapped merchant credential | [`AkzDNewd…LFXXT`](https://suiscan.xyz/testnet/tx/AkzDNewdTdKko3rxB3MiZR8KYBjUcRFWHnTGqbcLFXXT) | aborts, code **2** |
+| Wrong coin type | [`ABYL1hs4…U4fHr`](https://suiscan.xyz/testnet/tx/ABYL1hs4ThwTsYsWr7qZ613t4gp8oCni3qebUPVU4fHr) | aborts, code **7** |
 
-[`73FoxwgHirmKuDNcCWv4dmVcvNTimZW6ah42tYJ6wtit`](https://suiscan.xyz/testnet/tx/73FoxwgHirmKuDNcCWv4dmVcvNTimZW6ah42tYJ6wtit)
+**The payment** sends 2.553191 USDC for an RM12.00 order. It arrives at Kopitiam's
+payout address, which was never submitted with the transaction — the contract read
+it from the merchant credential. The customer is left holding a `SuiSureReceipt`
+object.
 
-The USDC arrives at Kopitiam's payout address. That address was never submitted with
-the transaction — the contract read it from the merchant credential. The customer is
-left holding a `SuiSureReceipt` object.
+**The replay** submits the same, already-paid request a second time.
 
-**A replayed request, blocked** — the same paid request, submitted again.
+**The swapped credential** is the sticker-swap attack: an unpaid request belonging to
+Kopitiam, paid while presenting Campus Café's credential, expecting the funds to
+follow the substituted merchant.
 
-[`5gbWuBDZ1fDVoZ2A9H1e1LHJ1dAydTx84mpCTu4YJafM`](https://suiscan.xyz/testnet/tx/5gbWuBDZ1fDVoZ2A9H1e1LHJ1dAydTx84mpCTu4YJafM) — aborts with code **4**, `EIntentAlreadyPaid`.
+**The wrong coin type** pays a USDC request with SUI of the same numeric value.
+Payment Kit checks that a coin's *value* matches the requested amount but never
+checks its *type*, so without this the request could have been settled in any token
+at all — including one minted for free.
 
-**A swapped merchant credential, blocked** — an unpaid request belonging to Kopitiam,
-paid while presenting Campus Café's credential. This is the sticker-swap attack: the
-attacker substitutes a merchant, expecting the funds to follow.
-
-[`CZzfnHeagToSfHnAcXFNJccrX2sJ2KCkPA4AMKVk6zgN`](https://suiscan.xyz/testnet/tx/CZzfnHeagToSfHnAcXFNJccrX2sJ2KCkPA4AMKVk6zgN) — aborts with code **2**, `ECredentialMismatch`.
+All three failures abort inside `pay_payment_intent` at different instruction
+offsets, so they are demonstrably different checks firing rather than one generic
+rejection.
 
 ### Error codes
 
@@ -133,6 +131,7 @@ attacker substitutes a merchant, expecting the funds to follow.
 | 4 | `EIntentAlreadyPaid` | Request has already been paid |
 | 5 | `EInvalidNonce` | Nonce is empty or over 36 characters |
 | 6 | `EInvalidExpiry` | Expiry is not in the future |
+| 7 | `ECoinTypeMismatch` | Coin offered is not the coin the request was created for |
 
 ### Building
 
@@ -142,4 +141,4 @@ sui move build
 sui move test
 ```
 
-Seven tests, four of them failure cases.
+Eight tests, five of them failure cases.

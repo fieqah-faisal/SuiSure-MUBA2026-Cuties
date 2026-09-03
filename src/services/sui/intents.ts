@@ -1,7 +1,13 @@
 import { SUI_CONFIG } from "@/config/sui";
 import type { PaymentIntent, PaymentStatus } from "@/types/domain";
 
-import { fetchObjectJson, fromBaseUnits, isSuiSureType, senToMyr } from "./client";
+import {
+  fetchObjectJson,
+  fromBaseUnits,
+  isSuiSureType,
+  normalizeCoinType,
+  senToMyr,
+} from "./client";
 import { getOnChainMerchantCredential } from "./merchants";
 
 /** `suisure::payments::PaymentIntent` as it comes back from chain. */
@@ -10,6 +16,7 @@ export interface OnChainPaymentIntent {
   credential_id: string;
   amount: string;
   amount_myr: string;
+  coin_type: string;
   nonce: string;
   description: string;
   order_ref: string;
@@ -53,14 +60,13 @@ export const getOnChainPaymentIntent = async (
  * address is then read from that credential. A swapped QR therefore fails here
  * rather than paying the wrong address — and would fail again in the contract.
  *
- * `coinType` is supplied by the caller because the on-chain request does not
- * record one. The contract enforces the amount but not which coin settles it,
- * so this value is a display and build-time choice, not a verified fact.
+ * The coin type is read from the request itself, not chosen by the caller. The
+ * contract records it at creation and asserts it at payment, so a request for
+ * USDC cannot be settled in anything else.
  */
 export const resolvePaymentIntent = async (
   paymentIntentId: string,
   merchantObjectId: string,
-  coinType: string = SUI_CONFIG.usdcCoinType,
 ): Promise<PaymentIntent> => {
   const intent = await getOnChainPaymentIntent(paymentIntentId);
   if (!intent) throw new Error("Payment request not found on Sui Testnet.");
@@ -73,6 +79,8 @@ export const resolvePaymentIntent = async (
 
   const credential = await getOnChainMerchantCredential(intent.credential_id);
   if (!credential) throw new Error("Merchant credential not found on Sui Testnet.");
+
+  const coinType = normalizeCoinType(intent.coin_type);
 
   return {
     objectId: intent.id,
