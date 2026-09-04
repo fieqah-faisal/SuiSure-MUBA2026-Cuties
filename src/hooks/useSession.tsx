@@ -64,7 +64,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       : "online";
 
   useEffect(() => {
-    setAccount(persistence.read<SuiAccount | null>("session", null));
+    const stored = persistence.read<SuiAccount | null>("session", null);
+    if (stored?.provider === "wallet") setAccount(stored);
+    else persistence.remove("session");
     setReady(true);
   }, []);
 
