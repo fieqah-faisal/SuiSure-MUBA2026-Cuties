@@ -12,6 +12,7 @@ export type PersistenceKey =
   | "recent-merchants"
   | "dismissed"
   | "receipts"
+  | "merchant-intents"
   | "notification-items";
 
 const isBrowser = () => typeof window !== "undefined";

@@ -1,4 +1,5 @@
 import { SUI_CONFIG } from "@/config/sui";
+import { DEMO_MERCHANTS, findDemoMerchant } from "@/config/demo-intents";
 import { persistence } from "@/services/storage/persistence.service";
 import { fromBaseUnits, normalizeCoinType } from "@/services/sui/client";
 import {
@@ -20,6 +21,9 @@ const SUI_COIN_TYPE = "0x2::sui::SUI";
 const tokenSymbol = (coinType: string) => coinType.split("::").pop() ?? coinType;
 const readReceipts = (): PaymentReceipt[] => persistence.read<PaymentReceipt[]>("receipts", []);
 const writeReceipts = (receipts: PaymentReceipt[]) => persistence.write("receipts", receipts);
+type MerchantIntentIndex = Record<string, string[]>;
+const readMerchantIntentIndex = (): MerchantIntentIndex =>
+  persistence.read<MerchantIntentIndex>("merchant-intents", {});
 
 export const paymentService = {
   encodeQrPayload(intent: PaymentIntent): PaymentIntentQRPayload {
@@ -61,53 +65,49 @@ export const paymentService = {
     return resolvePaymentIntent(objectId, onChain.credential_id);
   },
 
-  /** Returns the newest configured demo request that is still payable. */
+  /** Returns the first real configured Testnet request that remains payable. */
   async getAvailableDemoQrPayload(): Promise<PaymentIntentQRPayload> {
-    // Consume the RM8 development request first, preserving the RM12 Kopitiam
-    // request for the live pitch whenever both are still unpaid.
-    for (let i = SUI_CONFIG.demoIntentIds.length - 1; i >= 0; i -= 1) {
-      const paymentIntentId = SUI_CONFIG.demoIntentIds[i];
-      const merchantObjectId = SUI_CONFIG.merchantCredentialIds[i];
-      if (!paymentIntentId || !merchantObjectId) continue;
-      const payload: PaymentIntentQRPayload = {
-        v: 1,
-        type: "suisure.payment-intent",
-        network: SUI_CONFIG.network,
-        paymentIntentId,
-        merchantObjectId,
-      };
-      try {
-        const intent = await this.getPaymentIntentFromQr(payload);
-        if (intent.status === "pending") return payload;
-      } catch {
-        // Try the next configured demo request.
+    for (const merchant of DEMO_MERCHANTS) {
+      for (const reference of merchant.intents) {
+        if (reference.status !== "payable") continue;
+        const payload: PaymentIntentQRPayload = {
+          v: 1,
+          type: "suisure.payment-intent",
+          network: SUI_CONFIG.network,
+          paymentIntentId: reference.objectId,
+          merchantObjectId: merchant.credentialId,
+        };
+        try {
+          const intent = await this.getPaymentIntentFromQr(payload);
+          if (intent.status === "pending") return payload;
+        } catch {
+          // The fixture may have been consumed; continue through the real pool.
+        }
       }
     }
     throw new Error("No unused Testnet demo payment request is available.");
   },
 
   async listMerchantIntents(merchantObjectId: string): Promise<PaymentIntent[]> {
-    const resolved = await Promise.allSettled(
-      SUI_CONFIG.demoIntentIds.map((id) => this.getPaymentIntent(id)),
-    );
+    const configured =
+      findDemoMerchant(merchantObjectId)?.intents.map((intent) => intent.objectId) ?? [];
+    const remembered = readMerchantIntentIndex()[merchantObjectId.toLowerCase()] ?? [];
+    const intentIds = [...new Set([...remembered, ...configured])];
+    const resolved = await Promise.allSettled(intentIds.map((id) => this.getPaymentIntent(id)));
     return resolved
       .filter(
         (result): result is PromiseFulfilledResult<PaymentIntent> => result.status === "fulfilled",
       )
       .map((result) => result.value)
-      .filter((intent) => intent.merchantObjectId === merchantObjectId);
+      .filter((intent) => intent.merchantObjectId === merchantObjectId)
+      .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
   },
 
-  async createPaymentIntent(_input: {
-    merchantObjectId: string;
-    amountMyr: number;
-    description?: string;
-    orderReference?: string;
-    expiryMinutes: number;
-  }): Promise<PaymentIntent> {
-    throw new Error(
-      "Creating new requests from the website is not connected yet. Use a deployed Testnet demo request.",
-    );
+  rememberMerchantIntent(merchantObjectId: string, paymentIntentId: string) {
+    const index = readMerchantIntentIndex();
+    const key = merchantObjectId.toLowerCase();
+    index[key] = [...new Set([paymentIntentId, ...(index[key] ?? [])])];
+    persistence.write("merchant-intents", index);
   },
 
   /** Re-reads every security-critical value from Sui immediately before enabling payment. */
