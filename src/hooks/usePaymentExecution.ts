@@ -15,6 +15,17 @@ import type { PaymentIntent, PaymentReceipt } from "@/types/domain";
 export type PaymentExecutionPhase =
   "idle" | "preparing" | "awaiting-wallet" | "confirming" | "confirmed" | "failed";
 
+const readablePaymentError = (error: unknown) => {
+  const message = error instanceof Error ? error.message : "The payment could not be completed.";
+  if (/incorrect password/i.test(message)) {
+    return "Your wallet reported an incorrect password. Unlock Slush directly, then retry.";
+  }
+  if (/rejected|declined|denied|cancelled|canceled/i.test(message)) {
+    return "The wallet approval was cancelled. Nothing was sent.";
+  }
+  return message;
+};
+
 /** Owns the wallet-only boundary for signing and confirming a real Sui payment. */
 export function usePaymentExecution() {
   const dAppKit = useDAppKit();
@@ -78,9 +89,7 @@ export function usePaymentExecution() {
         await refreshBalance().catch(() => undefined);
         return receipt;
       } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "The payment could not be completed.";
-        setExecutionError(message);
+        setExecutionError(readablePaymentError(error));
         setPaymentPhase("failed");
         throw error;
       }

@@ -1,4 +1,5 @@
 import { Check, X } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import type { PaymentExecutionPhase } from "@/hooks/usePaymentExecution";
@@ -45,6 +46,10 @@ const phaseContent: Record<
 const shortIdentifier = (value: string) =>
   value.length > 24 ? `${value.slice(0, 14)}…${value.slice(-8)}` : value;
 
+const randomHex = () => Math.floor(Math.random() * 16).toString(16);
+
+const scrambleIdentifier = () => `0x${Array.from({ length: 20 }, randomHex).join("")}…`;
+
 export function PaymentRobot({
   phase,
   intentId,
@@ -52,12 +57,25 @@ export function PaymentRobot({
   error,
   onDismiss,
 }: PaymentRobotProps) {
-  if (phase === "idle") return null;
-
-  const content = phaseContent[phase];
   const failed = phase === "failed";
   const confirmed = phase === "confirmed";
   const identifier = transactionDigest ?? intentId;
+  const active = phase !== "idle" && !failed && !confirmed;
+  const [animatedIdentifier, setAnimatedIdentifier] = useState(() => shortIdentifier(identifier));
+
+  useEffect(() => {
+    if (!active) {
+      setAnimatedIdentifier(shortIdentifier(identifier));
+      return;
+    }
+
+    setAnimatedIdentifier(scrambleIdentifier());
+    const timer = window.setInterval(() => setAnimatedIdentifier(scrambleIdentifier()), 85);
+    return () => window.clearInterval(timer);
+  }, [active, identifier]);
+
+  if (phase === "idle") return null;
+  const content = phaseContent[phase];
 
   return (
     <div
@@ -83,14 +101,14 @@ export function PaymentRobot({
           <div className="mx-auto h-6 w-0.5 bg-primary" />
           <div
             className={`mx-auto h-3 w-3 rounded-full ${
-              failed ? "bg-critical" : confirmed ? "bg-success" : "animate-pulse bg-warning"
+              failed ? "bg-critical" : confirmed ? "bg-success" : "payment-robot-antenna"
             }`}
           />
 
           <div className="relative mx-auto mt-2 max-w-[19rem] rounded-[2rem] bg-primary p-4 pt-14 shadow-float">
             <div className="absolute left-1/2 top-4 flex -translate-x-1/2 gap-10">
-              <span className="h-6 w-3 rounded-full bg-primary-foreground" />
-              <span className="h-6 w-3 rounded-full bg-primary-foreground" />
+              <span className="payment-robot-eye h-6 w-3 rounded-full bg-primary-foreground" />
+              <span className="payment-robot-eye h-6 w-3 rounded-full bg-primary-foreground [animation-delay:90ms]" />
             </div>
 
             <div className="rounded-2xl bg-slate-950 p-4 text-left text-slate-200 shadow-inner">
@@ -117,7 +135,7 @@ export function PaymentRobot({
               </div>
 
               <p className={`mt-4 font-mono text-xs ${failed ? "text-critical" : "text-success"}`}>
-                {shortIdentifier(identifier)}
+                {animatedIdentifier}
               </p>
               <div className="my-3 h-px bg-slate-800" />
               <div className="flex items-center gap-2 text-xs text-slate-400">

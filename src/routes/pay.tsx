@@ -397,7 +397,7 @@ function ReviewStage({ payload }: { payload: PaymentIntentQRPayload }) {
                     });
                   }, 700);
                 })
-                .catch((e: Error) => setPaymentError(e.message))
+                .catch(() => undefined)
                 .finally(() => setPaying(false));
             }}
           >
