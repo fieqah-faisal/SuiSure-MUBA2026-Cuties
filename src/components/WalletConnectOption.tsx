@@ -20,7 +20,10 @@ export default function WalletConnectOption() {
   const [accountDialogOpen, setAccountDialogOpen] = useState(false);
   const [error, setError] = useState<string>();
 
-  const externalWallets = useMemo(() => wallets.filter((wallet) => !isEnokiWallet(wallet)), [wallets]);
+  const externalWallets = useMemo(
+    () => wallets.filter((wallet) => !isEnokiWallet(wallet)),
+    [wallets],
+  );
   const busy = connection.status === "connecting" || connection.status === "reconnecting";
   const address = connection.status === "connected" ? connection.account.address : undefined;
   const connectedWallet = connection.status === "connected" ? connection.wallet : undefined;
