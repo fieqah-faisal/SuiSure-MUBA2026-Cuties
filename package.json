@@ -12,6 +12,7 @@
     "build:dev": "vite build --mode development",
     "preview": "node .output/server/index.mjs",
     "lint": "eslint .",
+    "verify:chain": "tsx scripts/verify-chain.ts",
     "format": "prettier --write ."
   },
   "overrides": {
@@ -94,6 +95,7 @@
     "globals": "^15.15.0",
     "nitro": "3.0.260603-beta",
     "prettier": "^3.7.3",
+    "tsx": "^4.23.13",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.56.1",
     "vite": "8.1.5"
