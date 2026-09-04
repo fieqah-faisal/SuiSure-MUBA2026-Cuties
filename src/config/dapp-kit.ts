@@ -4,8 +4,8 @@ import { SuiGrpcClient } from "@mysten/sui/grpc";
 
 import { SUI_CONFIG } from "@/config/sui";
 
-const enokiApiKey = import.meta.env.VITE_ENOKI_API_KEY?.trim() ?? "";
-const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim() ?? "";
+const enokiApiKey = import.meta.env["VITE_ENOKI_API_KEY"]?.trim() ?? "";
+const googleClientId = import.meta.env["VITE_GOOGLE_CLIENT_ID"]?.trim() ?? "";
 
 export const ENOKI_CONFIG = Object.freeze({
   apiKey: enokiApiKey,
