@@ -17,6 +17,7 @@ import { useSession } from "@/hooks/useSession";
 import { notificationService } from "@/services/notifications/notification.service";
 import { paymentService } from "@/services/payments/payment.service";
 import { listMerchantPaymentActivity } from "@/services/sui/activity";
+import { normalizeAddress } from "@/services/sui/client";
 import type { MerchantPaymentActivity, PaymentReceipt } from "@/types/domain";
 
 export const Route = createFileRoute("/activity")({
@@ -59,9 +60,23 @@ function ActivityPage() {
           paymentService.listReceipts(account?.address),
           credential ? listMerchantPaymentActivity(credential, { refresh }) : Promise.resolve([]),
         ]);
-        incoming.forEach((payment) => notificationService.addMerchantPaymentReceived(payment));
-        setSent(outgoing);
-        setReceived(incoming);
+        const scopedOutgoing = account
+          ? outgoing.filter(
+              (receipt) =>
+                normalizeAddress(receipt.payerAddress) === normalizeAddress(account.address),
+            )
+          : [];
+        const scopedIncoming = account
+          ? incoming.filter(
+              (payment) =>
+                normalizeAddress(payment.merchantAddress) === normalizeAddress(account.address),
+            )
+          : [];
+        scopedIncoming.forEach((payment) =>
+          notificationService.addMerchantPaymentReceived(payment),
+        );
+        setSent(scopedOutgoing);
+        setReceived(scopedIncoming);
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : "Transaction history could not load.");
       } finally {

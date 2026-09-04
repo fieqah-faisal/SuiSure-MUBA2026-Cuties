@@ -103,7 +103,7 @@ export default function WalletConnectOption() {
       </Dialog>
 
       <Dialog open={accountDialogOpen} onOpenChange={setAccountDialogOpen}>
-        <DialogContent className="max-w-sm rounded-2xl">
+        <DialogContent className="w-[calc(100%-2rem)] max-w-sm overflow-hidden rounded-2xl">
           <DialogHeader>
             <DialogTitle>Connected account</DialogTitle>
             <DialogDescription>Manage the Sui account used by SuiSure.</DialogDescription>
@@ -111,7 +111,7 @@ export default function WalletConnectOption() {
 
           {connectedWallet && connection.status === "connected" ? (
             <div className="space-y-4">
-              <div className="flex items-center gap-3 rounded-xl border border-border p-3">
+              <div className="flex w-full min-w-0 items-center gap-3 overflow-hidden rounded-xl border border-border p-3">
                 {connectedWallet.icon ? (
                   <img src={connectedWallet.icon} alt="" className="h-9 w-9 rounded-lg" />
                 ) : (
@@ -121,7 +121,9 @@ export default function WalletConnectOption() {
                 )}
                 <div className="min-w-0">
                   <p className="font-medium text-foreground">{connectedWallet.name}</p>
-                  <p className="truncate font-mono text-xs text-muted-foreground">{address}</p>
+                  <p className="block max-w-full truncate font-mono text-xs text-muted-foreground">
+                    {address}
+                  </p>
                 </div>
               </div>
 

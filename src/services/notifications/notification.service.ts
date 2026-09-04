@@ -1,7 +1,14 @@
 import { persistence } from "@/services/storage/persistence.service";
 import type { AppNotification, MerchantPaymentActivity, PaymentReceipt } from "@/types/domain";
 
-const readItems = () => persistence.read<AppNotification[]>("notification-items", []);
+const normalize = (address: string) => address.toLowerCase();
+const readAllItems = () => persistence.read<AppNotification[]>("notification-items", []);
+const readItems = (accountAddress: string) =>
+  readAllItems().filter(
+    (item) =>
+      typeof item.accountAddress === "string" &&
+      normalize(item.accountAddress) === normalize(accountAddress),
+  );
 const NOTIFICATION_CHANGE_EVENT = "suisure:notifications-changed";
 const writeItems = (items: AppNotification[]) => {
   persistence.write("notification-items", items);
@@ -9,14 +16,22 @@ const writeItems = (items: AppNotification[]) => {
 };
 
 const addIfNew = (item: AppNotification) => {
-  const items = readItems();
-  if (items.some((existing) => existing.id === item.id)) return;
+  const items = readAllItems();
+  if (
+    items.some(
+      (existing) =>
+        existing.id === item.id &&
+        typeof existing.accountAddress === "string" &&
+        normalize(existing.accountAddress) === normalize(item.accountAddress),
+    )
+  )
+    return;
   writeItems([item, ...items]);
 };
 
 export const notificationService = {
-  async list(): Promise<AppNotification[]> {
-    return readItems();
+  async list(accountAddress: string): Promise<AppNotification[]> {
+    return readItems(accountAddress);
   },
   addPaymentConfirmation(receipt: PaymentReceipt) {
     const item: AppNotification = {
@@ -26,6 +41,7 @@ export const notificationService = {
       kind: "payment",
       createdAt: receipt.timestamp,
       read: false,
+      accountAddress: receipt.payerAddress,
     };
     addIfNew(item);
   },
@@ -38,15 +54,32 @@ export const notificationService = {
       kind: "payment",
       createdAt: payment.timestamp,
       read: false,
+      accountAddress: payment.merchantAddress,
     };
     addIfNew(item);
   },
-  markRead(id: string) {
-    writeItems(readItems().map((item) => (item.id === id ? { ...item, read: true } : item)));
+  markRead(id: string, accountAddress: string) {
+    writeItems(
+      readAllItems().map((item) =>
+        item.id === id &&
+        typeof item.accountAddress === "string" &&
+        normalize(item.accountAddress) === normalize(accountAddress)
+          ? { ...item, read: true }
+          : item,
+      ),
+    );
   },
-  markAllRead(ids: string[]) {
+  markAllRead(ids: string[], accountAddress: string) {
     const selected = new Set(ids);
-    writeItems(readItems().map((item) => (selected.has(item.id) ? { ...item, read: true } : item)));
+    writeItems(
+      readAllItems().map((item) =>
+        selected.has(item.id) &&
+        typeof item.accountAddress === "string" &&
+        normalize(item.accountAddress) === normalize(accountAddress)
+          ? { ...item, read: true }
+          : item,
+      ),
+    );
   },
   subscribe(listener: () => void) {
     if (typeof window === "undefined") return () => undefined;
