@@ -1,3 +1,4 @@
+import { isGoogleWallet } from "@mysten/enoki";
 import { useCurrentNetwork, useDAppKit, useWalletConnection } from "@mysten/dapp-kit-react";
 import {
   createContext,
@@ -8,6 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+
 import { SUI_CONFIG } from "@/config/sui";
 import { merchantService } from "@/services/merchant/merchant.service";
 import { paymentService } from "@/services/payments/payment.service";
@@ -15,6 +17,7 @@ import { persistence } from "@/services/storage/persistence.service";
 import type { MerchantCredential, NetworkStatus, SuiAccount } from "@/types/domain";
 
 export type ViewMode = "customer" | "merchant";
+
 interface SessionValue {
   ready: boolean;
   account: SuiAccount | null;
@@ -26,12 +29,15 @@ interface SessionValue {
   balance: number;
   balanceToken: string;
   gasBalance: number;
-  signInWithWallet: (address: string) => void;
   signOut: () => Promise<void>;
   clearLocalData: () => void;
   refreshBalance: () => Promise<void>;
 }
+
 const SessionContext = createContext<SessionValue | null>(null);
+
+const isSupportedSession = (value: SuiAccount | null): value is SuiAccount =>
+  Boolean(value && (value.provider === "wallet" || value.provider === "google"));
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const dAppKit = useDAppKit();
@@ -57,6 +63,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("offline", onOffline);
     };
   }, []);
+
   const networkStatus: NetworkStatus = !online
     ? "offline"
     : currentNetwork !== SUI_CONFIG.network
@@ -65,31 +72,39 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const stored = persistence.read<SuiAccount | null>("session", null);
-    if (stored?.provider === "wallet") setAccount(stored);
+    if (isSupportedSession(stored)) setAccount(stored);
     else persistence.remove("session");
     setReady(true);
   }, []);
 
-  const signInWithWallet = useCallback((address: string) => {
-    const walletSession: SuiAccount = {
-      address,
-      provider: "wallet",
-      displayName: "Sui Wallet User",
-    };
-    persistence.write("session", walletSession);
-    setAccount(walletSession);
-  }, []);
-
   useEffect(() => {
     if (!ready) return;
-    if (walletConnection.status === "connected" && walletConnection.account) {
-      if (account?.provider !== "wallet" || account.address !== walletConnection.account.address)
-        signInWithWallet(walletConnection.account.address);
-    } else if (walletConnection.status === "disconnected" && account?.provider === "wallet") {
+
+    if (walletConnection.status === "connected") {
+      const connectedAccount: SuiAccount = isGoogleWallet(walletConnection.wallet)
+        ? {
+            address: walletConnection.account.address,
+            provider: "google",
+            displayName: "Google zkLogin User",
+          }
+        : {
+            address: walletConnection.account.address,
+            provider: "wallet",
+            displayName: "Sui Wallet User",
+          };
+
+      if (
+        account?.address !== connectedAccount.address ||
+        account.provider !== connectedAccount.provider
+      ) {
+        persistence.write("session", connectedAccount);
+        setAccount(connectedAccount);
+      }
+    } else if (walletConnection.status === "disconnected" && account) {
       persistence.remove("session");
       setAccount(null);
     }
-  }, [ready, walletConnection.status, walletConnection.account, account, signInWithWallet]);
+  }, [ready, walletConnection, account]);
 
   const refreshBalance = useCallback(async () => {
     if (!account?.address) {
@@ -110,6 +125,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setGasBalance(0);
       return;
     }
+
     void refreshBalance();
     let cancelled = false;
     void merchantService.getMerchantCredential(account.address).then((value) => {
@@ -118,23 +134,25 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         if (!value) setViewMode("customer");
       }
     });
+
     return () => {
       cancelled = true;
     };
   }, [account, refreshBalance]);
 
   const signOut = useCallback(async () => {
-    if (account?.provider === "wallet") await dAppKit.disconnectWallet();
+    if (walletConnection.status !== "disconnected") await dAppKit.disconnectWallet();
     persistence.remove("session");
     setAccount(null);
     setViewMode("customer");
-  }, [account?.provider, dAppKit]);
+  }, [dAppKit, walletConnection.status]);
+
   const clearLocalData = useCallback(() => {
-    if (account?.provider === "wallet") void dAppKit.disconnectWallet();
+    if (walletConnection.status !== "disconnected") void dAppKit.disconnectWallet();
     persistence.clearAll();
     setAccount(null);
     setViewMode("customer");
-  }, [account?.provider, dAppKit]);
+  }, [dAppKit, walletConnection.status]);
 
   const value = useMemo<SessionValue>(
     () => ({
@@ -148,7 +166,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       balance,
       balanceToken,
       gasBalance,
-      signInWithWallet,
       signOut,
       clearLocalData,
       refreshBalance,
@@ -162,14 +179,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       balance,
       balanceToken,
       gasBalance,
-      signInWithWallet,
       signOut,
       clearLocalData,
       refreshBalance,
     ],
   );
+
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }
+
 export function useSession() {
   const context = useContext(SessionContext);
   if (!context) throw new Error("useSession must be used inside SessionProvider");
