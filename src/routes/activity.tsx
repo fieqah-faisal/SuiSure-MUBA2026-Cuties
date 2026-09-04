@@ -45,6 +45,7 @@ type ActivityItem =
 
 function ActivityPage() {
   const { account, credential } = useSession();
+  const accountAddress = account?.address;
   const [filter, setFilter] = useState<ActivityFilter>("all");
   const [sent, setSent] = useState<PaymentReceipt[]>([]);
   const [received, setReceived] = useState<MerchantPaymentActivity[]>([]);
@@ -60,16 +61,16 @@ function ActivityPage() {
           paymentService.listReceipts(account?.address),
           credential ? listMerchantPaymentActivity(credential, { refresh }) : Promise.resolve([]),
         ]);
-        const scopedOutgoing = account
+        const scopedOutgoing = accountAddress
           ? outgoing.filter(
               (receipt) =>
-                normalizeAddress(receipt.payerAddress) === normalizeAddress(account.address),
+                normalizeAddress(receipt.payerAddress) === normalizeAddress(accountAddress),
             )
           : [];
-        const scopedIncoming = account
+        const scopedIncoming = accountAddress
           ? incoming.filter(
               (payment) =>
-                normalizeAddress(payment.merchantAddress) === normalizeAddress(account.address),
+                normalizeAddress(payment.merchantAddress) === normalizeAddress(accountAddress),
             )
           : [];
         scopedIncoming.forEach((payment) =>
@@ -83,7 +84,7 @@ function ActivityPage() {
         setLoading(false);
       }
     },
-    [account?.address, credential],
+    [accountAddress, credential],
   );
 
   useEffect(() => {
