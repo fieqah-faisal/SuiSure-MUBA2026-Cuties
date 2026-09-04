@@ -19,7 +19,7 @@ import { SUI_CONFIG } from "../src/config/sui";
 import { suiClient, fetchObjectJson } from "../src/services/sui/client";
 import { getOnChainPaymentIntent } from "../src/services/sui/intents";
 import { listOnChainMerchants } from "../src/services/sui/merchants";
-import { buildPaymentTransaction, listPayerCoins, getPayerBalance } from "../src/services/sui/pay";
+import { buildPaymentTransaction, getPayerBalance } from "../src/services/sui/pay";
 
 /** The wallet that holds the AdminCap and the demo funds. */
 const DEFAULT_PAYER = "0xbf1b6074ee288c91a4cd8a599234547b9c1cbc73907739feff6985a86893a331";
@@ -159,16 +159,18 @@ const main = async () => {
 
   // --------------------------------------------------------------- wallet
   heading("Demo wallet");
-  const sui = await listPayerCoins(payer, "0x2::sui::SUI");
-  if (sui.length === 0) {
+  // Counted directly rather than through the adapter: buildPaymentTransaction
+  // now resolves coins itself via tx.coin(), so pay.ts no longer lists them.
+  const sui = await suiClient.core.listCoins({ owner: payer, coinType: "0x2::sui::SUI" });
+  if (sui.objects.length === 0) {
     fail("no SUI", "cannot pay gas; run the faucet");
-  } else if (sui.length === 1) {
+  } else if (sui.objects.length === 1) {
     warn(
       "only 1 gas coin",
       "two concurrent transactions would lock it until the epoch ends; run the faucet a few times",
     );
   } else {
-    pass(`${sui.length} separate gas coins`, "safe against equivocation");
+    pass(`${sui.objects.length} separate gas coins`, "safe against equivocation");
   }
 
   const usdc = await getPayerBalance(payer, SUI_CONFIG.usdcCoinType);
@@ -187,13 +189,11 @@ const main = async () => {
   } else {
     try {
       const raw = await getOnChainPaymentIntent(target);
-      const coins = await listPayerCoins(payer, SUI_CONFIG.usdcCoinType);
       const tx = buildPaymentTransaction({
         paymentIntentId: target,
         merchantCredentialId: raw!.credential_id,
         amountBaseUnits: BigInt(raw!.amount),
         coinType: SUI_CONFIG.usdcCoinType,
-        paymentCoins: coins,
       });
       tx.setSender(payer);
       const bytes = await tx.build({ client: suiClient });

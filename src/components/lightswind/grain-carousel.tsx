@@ -231,7 +231,12 @@ export const GrainCarousel = forwardRef<GrainCarouselHandle, GrainCarouselProps>
         <svg aria-hidden className="pointer-events-none absolute h-0 w-0">
           <defs>
             <filter id={filterId}>
-              <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves={3} stitchTiles="stitch" />
+              <feTurbulence
+                type="fractalNoise"
+                baseFrequency="0.85"
+                numOctaves={3}
+                stitchTiles="stitch"
+              />
               <feColorMatrix type="saturate" values="0" />
             </filter>
           </defs>
@@ -368,7 +373,9 @@ export const GrainCarousel = forwardRef<GrainCarouselHandle, GrainCarouselProps>
                         </span>
                       )}
                       {item.title && (
-                        <h3 className="text-lg font-semibold leading-tight text-white">{item.title}</h3>
+                        <h3 className="text-lg font-semibold leading-tight text-white">
+                          {item.title}
+                        </h3>
                       )}
                       {item.subtitle && (
                         <p className="mt-1 text-sm leading-snug text-white/70">{item.subtitle}</p>
@@ -405,7 +412,9 @@ export const GrainCarousel = forwardRef<GrainCarouselHandle, GrainCarouselProps>
                     aria-label={`Go to slide ${i + 1}`}
                     className={cn(
                       "h-1.5 cursor-pointer rounded-full transition-all duration-300",
-                      i === currentIndex ? "w-7 bg-primary" : "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/60",
+                      i === currentIndex
+                        ? "w-7 bg-primary"
+                        : "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/60",
                     )}
                   />
                 ))}

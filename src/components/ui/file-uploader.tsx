@@ -14,10 +14,9 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
-export type FileStatus = "queued" | "uploading" | "done" | "error";
+export type FileStatus = "done" | "error";
 
 export interface UploadedFile {
   id: string;
@@ -43,7 +42,7 @@ export interface FileUploaderProps {
 }
 
 function generateId(): string {
-  return Math.random().toString(36).slice(2, 9);
+  return globalThis.crypto.randomUUID();
 }
 
 function formatBytes(bytes: number): string {
@@ -86,36 +85,16 @@ export function FileUploader({
 
   const totalSize = files.reduce((acc, f) => acc + f.file.size, 0);
   const allDone = files.length > 0 && files.every((f) => f.status === "done");
-  const hasUploading = files.some((f) => f.status === "uploading" || f.status === "queued");
   const isAtLimit = files.length >= maxFiles;
-
-  function simulateUpload(id: string) {
-    let progress = 0;
-    setFiles((prev) => prev.map((f) => (f.id === id ? { ...f, status: "uploading" } : f)));
-    const interval = setInterval(() => {
-      progress += Math.random() * 18 + 8;
-      if (progress >= 100) {
-        clearInterval(interval);
-        setFiles((prev) =>
-          prev.map((f) => (f.id === id ? { ...f, progress: 100, status: "done" } : f)),
-        );
-      } else {
-        setFiles((prev) =>
-          prev.map((f) => (f.id === id ? { ...f, progress: Math.min(progress, 99) } : f)),
-        );
-      }
-    }, 120);
-  }
 
   function addFiles(incoming: FileList | File[]) {
     const remaining = maxFiles - files.length;
     const toAdd: UploadedFile[] = Array.from(incoming)
       .filter((f) => f.size <= maxSizeMB * 1024 * 1024)
       .slice(0, remaining)
-      .map((file) => ({ id: generateId(), file, progress: 0, status: "queued" as const }));
+      .map((file) => ({ id: generateId(), file, progress: 100, status: "done" as const }));
 
     setFiles((prev) => [...prev, ...toAdd]);
-    toAdd.forEach((f) => setTimeout(() => simulateUpload(f.id), 80));
   }
 
   function removeFile(id: string) {
@@ -209,11 +188,6 @@ export function FileUploader({
                     {uf.status === "error" ? (
                       <FaExclamationCircle className="h-4 w-4 text-critical" />
                     ) : null}
-                    {uf.status === "uploading" || uf.status === "queued" ? (
-                      <span className="text-xs text-muted-foreground">
-                        {Math.round(uf.progress)}%
-                      </span>
-                    ) : null}
                     <button
                       type="button"
                       aria-label={`Remove ${uf.file.name}`}
@@ -224,9 +198,6 @@ export function FileUploader({
                     </button>
                   </div>
                 </div>
-                {uf.status === "uploading" || uf.status === "queued" ? (
-                  <Progress value={uf.progress} className="mt-3 h-1" />
-                ) : null}
               </li>
             ))}
           </ul>
@@ -237,11 +208,9 @@ export function FileUploader({
             <span>
               {files.length} file{files.length !== 1 ? "s" : ""} · {formatBytes(totalSize)} total
             </span>
-            {!hasUploading ? (
-              <button type="button" onClick={clearAll} className="font-medium text-primary">
-                Clear all
-              </button>
-            ) : null}
+            <button type="button" onClick={clearAll} className="font-medium text-primary">
+              Clear all
+            </button>
           </div>
         ) : null}
 

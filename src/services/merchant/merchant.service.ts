@@ -1,57 +1,36 @@
+import { SUI_CONFIG } from "@/config/sui";
+import { normalizeAddress } from "@/services/sui/client";
 import {
-  MOCK_MERCHANTS,
-  MOCK_MERCHANT_CREDENTIAL,
-} from "@/services/mocks/data";
+  getOnChainMerchantCredential,
+  listOnChainMerchants,
+  toMerchantCredential,
+} from "@/services/sui/merchants";
 import type { MerchantCredential, VerifiedMerchant } from "@/types/domain";
-
-export interface MerchantApplication {
-  businessName: string;
-  category: string;
-  registrationNumber: string;
-  contactEmail: string;
-  receivingAddress: string;
-  consent: boolean;
-}
-
-export type ApplicationStatus =
-  | "not-submitted"
-  | "submitted"
-  | "under-review"
-  | "approved"
-  | "rejected";
-
-const delay = (ms = 450) => new Promise((r) => setTimeout(r, ms));
-
 export const merchantService = {
-  /** Role is derived from an onchain MerchantCredential, never from UI state. */
-  async getMerchantCredential(
-    address: string,
-    devMerchantOverride = false,
-  ): Promise<MerchantCredential | null> {
-    await delay(250);
+  async getMerchantCredential(address: string): Promise<MerchantCredential | null> {
     if (!address) return null;
-    return devMerchantOverride ? MOCK_MERCHANT_CREDENTIAL : null;
+    const credentials = await Promise.all(
+      SUI_CONFIG.merchantCredentialIds.map((id) => getOnChainMerchantCredential(id)),
+    );
+    const selected = credentials.find(
+      (credential) =>
+        credential && normalizeAddress(credential.payout) === normalizeAddress(address),
+    );
+    return selected ? toMerchantCredential(selected, "USDC") : null;
   },
-
   async listVerifiedMerchants(query = ""): Promise<VerifiedMerchant[]> {
-    await delay(200);
-    const q = query.trim().toLowerCase();
-    return MOCK_MERCHANTS.filter((m) => m.verified).filter(
-      (m) => !q || m.name.toLowerCase().includes(q) || m.category.toLowerCase().includes(q),
+    const merchants = await listOnChainMerchants();
+    const value = query.trim().toLowerCase();
+    return merchants.filter(
+      (merchant) =>
+        !value ||
+        merchant.name.toLowerCase().includes(value) ||
+        merchant.category.toLowerCase().includes(value),
     );
   },
-
   async getMerchant(objectId: string): Promise<VerifiedMerchant | null> {
-    await delay(150);
-    return MOCK_MERCHANTS.find((m) => m.objectId === objectId) ?? null;
-  },
-
-  /** Submitting an application never approves a merchant. */
-  async submitApplication(
-    application: MerchantApplication,
-  ): Promise<{ status: ApplicationStatus; reference: string }> {
-    await delay(900);
-    if (!application.consent) throw new Error("Consent is required.");
-    return { status: "under-review", reference: `APP-${Date.now().toString().slice(-6)}` };
+    return (
+      (await listOnChainMerchants()).find((merchant) => merchant.objectId === objectId) ?? null
+    );
   },
 };

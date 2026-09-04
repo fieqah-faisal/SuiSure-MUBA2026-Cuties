@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
 
 import { AppShell } from "@/components/app/AppShell";
+import { PaymentRobot } from "@/components/payments/PaymentRobot";
 import { FileUploader } from "@/components/ui/file-uploader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,13 +13,20 @@ import type { Tabs12Service } from "@/components/ui/tabs-12";
 import { Textarea } from "@/components/ui/textarea";
 import { SUI_CONFIG, shortAddress } from "@/config/sui";
 import { useSession } from "@/hooks/useSession";
+import { usePaymentExecution } from "@/hooks/usePaymentExecution";
 import { aiAssistantService } from "@/services/ai-assistant/ai.service";
 import { paymentService } from "@/services/payments/payment.service";
-import type { AiParsedIntent, PaymentIntent, RiskAssessment } from "@/types/domain";
+import type {
+  AiParsedIntent,
+  PaymentIntent,
+  PaymentIntentQRPayload,
+  RiskAssessment,
+} from "@/types/domain";
 
 const searchSchema = z.object({
   tab: z.enum(["scan", "upload", "ai"]).default("scan"),
   intent: z.string().optional(),
+  merchant: z.string().optional(),
 });
 
 export const Route = createFileRoute("/pay")({
@@ -42,10 +50,31 @@ export const Route = createFileRoute("/pay")({
 });
 
 function PayPage() {
-  const { tab, intent: intentId } = Route.useSearch();
+  const { tab, intent: intentId, merchant: merchantObjectId } = Route.useSearch();
   const navigate = useNavigate();
 
-  if (intentId) return <ReviewStage intentId={intentId} />;
+  if (intentId && merchantObjectId) {
+    return (
+      <ReviewStage
+        payload={{
+          v: 1,
+          type: "suisure.payment-intent",
+          network: SUI_CONFIG.network,
+          paymentIntentId: intentId,
+          merchantObjectId,
+        }}
+      />
+    );
+  }
+  if (intentId) {
+    return (
+      <AppShell title="Invalid payment request">
+        <p className="surface-card p-6 text-sm text-critical">
+          The payment link is missing its merchant credential. Scan the complete SuiSure QR again.
+        </p>
+      </AppShell>
+    );
+  }
 
   const services: Tabs12Service[] = [
     { name: "Scan", value: "scan", icon: Camera, content: <ScanTab /> },
@@ -77,13 +106,22 @@ function PayPage() {
 
 function useOpenIntent() {
   const navigate = useNavigate();
-  return (id: string) => void navigate({ to: "/pay", search: { tab: "scan" as const, intent: id } });
+  return (payload: PaymentIntentQRPayload) =>
+    void navigate({
+      to: "/pay",
+      search: {
+        tab: "scan" as const,
+        intent: payload.paymentIntentId,
+        merchant: payload.merchantObjectId,
+      },
+    });
 }
 
 function ScanTab() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadingDemo, setLoadingDemo] = useState(false);
   const openIntent = useOpenIntent();
   const stopRef = useRef<(() => void) | null>(null);
 
@@ -104,7 +142,7 @@ function ScanTab() {
             const payload = paymentService.decodeQrPayload(result.getText());
             stopRef.current?.();
             setScanning(false);
-            openIntent(payload.paymentIntentId);
+            openIntent(payload);
           } catch (e) {
             setError((e as Error).message);
           }
@@ -126,6 +164,22 @@ function ScanTab() {
       <Button className="mt-4 w-full" onClick={() => void start()} disabled={scanning}>
         {scanning ? "Scanning…" : "Start camera"}
       </Button>
+      <Button
+        className="mt-2 w-full"
+        variant="outline"
+        disabled={scanning || loadingDemo}
+        onClick={() => {
+          setLoadingDemo(true);
+          setError(null);
+          void paymentService
+            .getAvailableDemoQrPayload()
+            .then(openIntent)
+            .catch((e: Error) => setError(e.message))
+            .finally(() => setLoadingDemo(false));
+        }}
+      >
+        {loadingDemo ? <Loader2 className="h-4 w-4 animate-spin" /> : "Load Testnet demo request"}
+      </Button>
     </div>
   );
 }
@@ -144,7 +198,7 @@ function UploadTab() {
       const result = await new BrowserQRCodeReader().decodeFromImageUrl(url);
       URL.revokeObjectURL(url);
       const payload = paymentService.decodeQrPayload(result.getText());
-      openIntent(payload.paymentIntentId);
+      openIntent(payload);
     } catch (e) {
       setError((e as Error).message || "Could not read a QR code from that image.");
     } finally {
@@ -174,7 +228,6 @@ function UploadTab() {
   );
 }
 
-
 function AiTab() {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -183,15 +236,15 @@ function AiTab() {
   return (
     <div className="surface-card p-4">
       <p className="text-sm text-muted-foreground">
-        Describe the payment, for example “Pay RM12 to Kopitiam Delight”. The assistant only prepares
-        a draft — it can never sign or send a payment.
+        Describe the payment, for example “Pay RM12 to Kopitiam Seri Damai”. The assistant only
+        prepares a draft — it can never sign or send a payment.
       </p>
       <Textarea
         className="mt-3"
         rows={3}
         value={message}
         onChange={(e) => setMessage(e.target.value)}
-        placeholder="Pay RM12 to Kopitiam Delight"
+        placeholder="Pay RM12 to Kopitiam Seri Damai"
       />
       <Button
         className="mt-3 w-full"
@@ -223,34 +276,64 @@ function AiTab() {
   );
 }
 
-function ReviewStage({ intentId }: { intentId: string }) {
-  const { account, balance, refreshBalance } = useSession();
+function ReviewStage({ payload }: { payload: PaymentIntentQRPayload }) {
+  const { account } = useSession();
+  const {
+    executePayment,
+    connectedAddress,
+    readyToPay,
+    paymentPhase,
+    transactionDigest,
+    executionError,
+    resetPaymentState,
+  } = usePaymentExecution();
   const navigate = useNavigate();
   const [intent, setIntent] = useState<PaymentIntent | null>(null);
   const [risk, setRisk] = useState<RiskAssessment | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paying, setPaying] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     void paymentService
-      .getPaymentIntent(intentId)
+      .getPaymentIntentFromQr({
+        v: 1,
+        type: "suisure.payment-intent",
+        network: SUI_CONFIG.network,
+        paymentIntentId: payload.paymentIntentId,
+        merchantObjectId: payload.merchantObjectId,
+      })
       .then(async (i) => {
         if (cancelled) return;
         setIntent(i);
-        const assessment = await paymentService.verifyPaymentIntent(i, { balanceToken: balance });
+        if (!connectedAddress)
+          throw new Error("Connect your Sui wallet before reviewing this payment.");
+        const assessment = await paymentService.verifyPaymentIntent(i, {
+          payerAddress: connectedAddress,
+        });
         if (!cancelled) setRisk(assessment);
       })
       .catch((e: Error) => setError(e.message));
     return () => {
       cancelled = true;
     };
-  }, [intentId, balance]);
+  }, [payload.paymentIntentId, payload.merchantObjectId, connectedAddress]);
 
   const blocked = !risk || risk.level === "blocked" || risk.level === "high";
 
   return (
     <AppShell title="Review payment">
+      <PaymentRobot
+        phase={paymentPhase}
+        intentId={payload.paymentIntentId}
+        transactionDigest={transactionDigest}
+        error={paymentError ?? executionError}
+        onDismiss={() => {
+          setPaymentError(null);
+          resetPaymentState();
+        }}
+      />
       {error ? (
         <div className="surface-card p-6 text-center">
           <ShieldAlert className="mx-auto h-8 w-8 text-critical" />
@@ -300,24 +383,31 @@ function ReviewStage({ intentId }: { intentId: string }) {
           <Button
             className="mt-5 w-full"
             size="lg"
-            disabled={blocked || paying || !account}
+            disabled={blocked || paying || !account || !readyToPay}
             onClick={() => {
-              if (!account) return;
+              if (!account || !readyToPay) return;
               setPaying(true);
-              void paymentService
-                .payPaymentIntent(intent, account.address)
-                .then(async (receipt) => {
-                  await refreshBalance();
-                  void navigate({
-                    to: "/receipt/$receiptId",
-                    params: { receiptId: receipt.receiptId },
-                  });
+              setPaymentError(null);
+              void executePayment(intent)
+                .then((receipt) => {
+                  window.setTimeout(() => {
+                    void navigate({
+                      to: "/receipt/$receiptId",
+                      params: { receiptId: receipt.receiptId },
+                    });
+                  }, 700);
                 })
-                .catch((e: Error) => setError(e.message))
+                .catch(() => undefined)
                 .finally(() => setPaying(false));
             }}
           >
-            {paying ? "Confirming on Sui…" : blocked ? "Payment blocked" : "Confirm and pay"}
+            {paying
+              ? "Authorizing payment…"
+              : !readyToPay
+                ? "Connect Testnet wallet to pay"
+                : blocked
+                  ? "Payment blocked"
+                  : "Confirm and pay"}
           </Button>
           <Button
             className="mt-2 w-full"

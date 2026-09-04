@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app/AppShell";
 import { EmptyState } from "@/components/app/EmptyState";
 import { Button } from "@/components/ui/button";
+import { useSession } from "@/hooks/useSession";
 import { notificationService } from "@/services/notifications/notification.service";
 import type { AppNotification } from "@/types/domain";
 
@@ -24,11 +25,16 @@ export const Route = createFileRoute("/notifications")({
 });
 
 function NotificationsPage() {
+  const { account } = useSession();
   const [items, setItems] = useState<AppNotification[] | null>(null);
 
   useEffect(() => {
-    void notificationService.list().then(setItems);
-  }, []);
+    if (!account?.address) return;
+    setItems(null);
+    const refresh = () => void notificationService.list(account.address).then(setItems);
+    refresh();
+    return notificationService.subscribe(refresh);
+  }, [account?.address]);
 
   return (
     <AppShell title="Notifications">
@@ -39,7 +45,7 @@ function NotificationsPage() {
           size="sm"
           onClick={() => {
             const all = (items ?? []).map((n) => n.id);
-            notificationService.markAllRead(all);
+            if (account) notificationService.markAllRead(all, account.address);
             setItems((prev) => (prev ?? []).map((n) => ({ ...n, read: true })));
           }}
         >
@@ -62,8 +68,10 @@ function NotificationsPage() {
               key={n.id}
               className={`surface-card p-4 ${n.read ? "opacity-70" : ""}`}
               onClick={() => {
-                notificationService.markRead(n.id);
-                setItems((prev) => (prev ?? []).map((x) => (x.id === n.id ? { ...x, read: true } : x)));
+                if (account) notificationService.markRead(n.id, account.address);
+                setItems((prev) =>
+                  (prev ?? []).map((x) => (x.id === n.id ? { ...x, read: true } : x)),
+                );
               }}
             >
               <p className="text-sm font-semibold">{n.title}</p>

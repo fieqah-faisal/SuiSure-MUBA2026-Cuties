@@ -6,13 +6,15 @@ import {
   useRouter,
   HeadContent,
   Scripts,
+  ClientOnly,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
-import { SessionProvider } from "@/hooks/useSession";
+
+const SuiAppProviders = lazy(() => import("@/components/SuiAppProviders"));
 
 function NotFoundComponent() {
   return (
@@ -75,15 +77,25 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+  // Wallet-standard discovery is browser-only. Render the application after
+  // hydration so the Firebase Node server never evaluates wallet APIs.
+  ssr: false,
   head: () => ({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "SuiSure - MUBA 2026" },
-      { name: "description", content: "AI-assisted Web3 payments on Sui. Understand, verify, and pay safely with SuiSure." },
+      {
+        name: "description",
+        content:
+          "AI-assisted Web3 payments on Sui. Understand, verify, and pay safely with SuiSure.",
+      },
       { name: "author", content: "Cuties" },
       { property: "og:title", content: "SuiSure - MUBA 2026" },
-      { property: "og:description", content: "AI-assisted Web3 payments on Sui. Understand, verify, and pay safely." },
+      {
+        property: "og:description",
+        content: "AI-assisted Web3 payments on Sui. Understand, verify, and pay safely.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@SuiSure" },
@@ -101,7 +113,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { rel: "icon", href: "/favicon.png", type: "image/png" },
     ],
-
   }),
   shellComponent: RootShell,
   component: RootComponent,
@@ -128,11 +139,15 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <SessionProvider>
-        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-        <Outlet />
-        <Toaster />
-      </SessionProvider>
+      <ClientOnly fallback={<div className="min-h-screen bg-background" />}>
+        <Suspense fallback={<div className="min-h-screen bg-background" />}>
+          <SuiAppProviders>
+            {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+            <Outlet />
+            <Toaster />
+          </SuiAppProviders>
+        </Suspense>
+      </ClientOnly>
     </QueryClientProvider>
   );
 }

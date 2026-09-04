@@ -101,9 +101,7 @@ export default function CosmicDust({
       };
     };
 
-    let particles: Particle[] = Array.from({ length: particleCount }, () =>
-      createParticle(true),
-    );
+    const particles: Particle[] = Array.from({ length: particleCount }, () => createParticle(true));
 
     const handleResize = () => {
       width = canvas.width = canvas.offsetWidth;
@@ -194,7 +192,8 @@ export default function CosmicDust({
           const cdy = p1.y - p2.y;
           const cDist = Math.sqrt(cdx * cdx + cdy * cdy);
           if (cDist < connectionRadius) {
-            const lineOpacity = (1 - cDist / connectionRadius) * 0.22 * Math.min(p1.opacity, p2.opacity);
+            const lineOpacity =
+              (1 - cDist / connectionRadius) * 0.22 * Math.min(p1.opacity, p2.opacity);
             ctx.beginPath();
             ctx.moveTo(p1.x, p1.y);
             ctx.lineTo(p2.x, p2.y);

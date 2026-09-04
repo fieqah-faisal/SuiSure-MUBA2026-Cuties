@@ -17,16 +17,6 @@ export interface BuildPaymentInput {
   amountBaseUnits: bigint;
   /** Full coin type, e.g. `0x...::usdc::USDC`. */
   coinType: string;
-  /**
-   * The payer's coins of `coinType`, exactly as `listPayerCoins` returns them.
-   * Ignored when paying in SUI, where the split comes off the gas coin.
-   */
-  paymentCoins: PayerCoin[];
-}
-
-export interface PayerCoin {
-  objectId: string;
-  balance: bigint;
 }
 
 /**
@@ -40,51 +30,20 @@ export interface PayerCoin {
  *    transaction first would leave a stray coin behind on any failure and adds a
  *    round trip the customer waits through.
  *
- * When paying in SUI the split comes off the gas coin. For any other coin the
- * caller's coins are merged first, because the exact amount may not exist in a
- * single object.
+ * The current SDK resolves the requested amount from either address balance
+ * or owned Coin objects, preserving support for zkLogin and extension wallets.
  */
 export const buildPaymentTransaction = (input: BuildPaymentInput): Transaction => {
   const tx = new Transaction();
 
-  let source;
-  if (input.coinType === SUI_COIN_TYPE) {
-    source = tx.gas;
-  } else {
-    // Largest first, so the common case needs no merge at all.
-    const sorted = [...input.paymentCoins].sort((a, b) => (a.balance < b.balance ? 1 : -1));
-    const total = sorted.reduce((sum, coin) => sum + coin.balance, 0n);
-    if (total < input.amountBaseUnits) {
-      throw new Error(
-        `Not enough ${input.coinType.split("::").pop() ?? "balance"} to pay this request. ` +
-          `Need ${input.amountBaseUnits}, wallet holds ${total}.`,
-      );
-    }
-
-    // Take only as many coins as the amount needs rather than merging the whole
-    // wallet into one object.
-    const needed: PayerCoin[] = [];
-    let running = 0n;
-    for (const coin of sorted) {
-      needed.push(coin);
-      running += coin.balance;
-      if (running >= input.amountBaseUnits) break;
-    }
-
-    const [primary, ...rest] = needed;
-    if (!primary) {
-      throw new Error(`No ${input.coinType} coins available to pay with.`);
-    }
-    source = tx.object(primary.objectId);
-    if (rest.length > 0) {
-      tx.mergeCoins(
-        source,
-        rest.map((coin) => tx.object(coin.objectId)),
-      );
-    }
-  }
-
-  const [exact] = tx.splitCoins(source, [tx.pure.u64(input.amountBaseUnits)]);
+  // Transaction.coin supports both Sui address balances (used by Enoki
+  // zkLogin accounts) and traditional owned Coin objects (used by extension
+  // wallets). The SDK resolves the correct source at signing time.
+  const exact = tx.coin({
+    type: input.coinType,
+    balance: input.amountBaseUnits,
+    useGasCoin: input.coinType === SUI_COIN_TYPE,
+  });
 
   tx.moveCall({
     // Move calls go to the latest package ID, not the original one.
@@ -100,18 +59,6 @@ export const buildPaymentTransaction = (input: BuildPaymentInput): Transaction =
   });
 
   return tx;
-};
-
-/** Coin objects the payer holds of a given type, newest page first. */
-export const listPayerCoins = async (
-  owner: string,
-  coinType: string,
-): Promise<PayerCoin[]> => {
-  const response = await suiClient.core.listCoins({ owner, coinType });
-  return response.objects.map((coin) => ({
-    objectId: coin.objectId,
-    balance: BigInt(coin.balance),
-  }));
 };
 
 /** Total spendable balance of `coinType`, in the coin's smallest unit. */

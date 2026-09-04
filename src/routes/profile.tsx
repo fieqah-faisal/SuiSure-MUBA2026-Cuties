@@ -2,8 +2,8 @@ import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { LogOut, ShieldCheck, Trash2 } from "lucide-react";
 
 import { AppShell } from "@/components/app/AppShell";
+import WalletConnectOption from "@/components/WalletConnectOption";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import { SUI_CONFIG, shortAddress } from "@/config/sui";
 import { useSession } from "@/hooks/useSession";
 
@@ -13,7 +13,8 @@ export const Route = createFileRoute("/profile")({
       { title: "Your profile | SuiSure" },
       {
         name: "description",
-        content: "Manage your SuiSure account, Sui Testnet address, merchant status and local data.",
+        content:
+          "Manage your SuiSure account, Sui Testnet address, merchant status and local data.",
       },
       { property: "og:title", content: "Your profile | SuiSure" },
       { property: "og:description", content: "Account, network and merchant settings." },
@@ -23,14 +24,7 @@ export const Route = createFileRoute("/profile")({
 });
 
 function ProfilePage() {
-  const {
-    account,
-    isMerchant,
-    devMerchantOverride,
-    setDevMerchantOverride,
-    signOut,
-    clearLocalData,
-  } = useSession();
+  const { account, isMerchant, signOut, clearLocalData } = useSession();
   const navigate = useNavigate();
 
   return (
@@ -39,15 +33,17 @@ function ProfilePage() {
 
       <section className="surface-card mt-4 p-5">
         <p className="text-sm font-semibold">{account?.displayName}</p>
-        {account?.email ? (
-          <p className="text-xs text-muted-foreground">{account.email}</p>
-        ) : null}
+        {account?.email ? <p className="text-xs text-muted-foreground">{account.email}</p> : null}
         <p className="mt-3 font-mono text-xs text-muted-foreground">
           {account ? shortAddress(account.address, 10, 8) : ""}
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
-          {SUI_CONFIG.networkLabel} · signed in with zkLogin ({account?.provider})
+          {SUI_CONFIG.networkLabel} ·{" "}
+          {account?.provider === "google" ? "Google zkLogin account" : "connected Sui wallet"}
         </p>
+        <div className="mt-4">
+          <WalletConnectOption />
+        </div>
       </section>
 
       <section className="surface-card mt-4 flex items-center justify-between p-5">
@@ -64,16 +60,6 @@ function ProfilePage() {
             <Link to="/merchant/apply">Apply</Link>
           </Button>
         )}
-      </section>
-
-      <section className="surface-card mt-4 flex items-center justify-between p-5">
-        <div>
-          <p className="text-sm font-semibold">Developer merchant mode</p>
-          <p className="text-xs text-muted-foreground">
-            Simulate holding a merchant credential while testing.
-          </p>
-        </div>
-        <Switch checked={devMerchantOverride} onCheckedChange={setDevMerchantOverride} />
       </section>
 
       <div className="mt-5 space-y-2">

@@ -9,9 +9,11 @@ export type PersistenceKey =
   | "payment-draft"
   | "notifications"
   | "session"
-  | "role-override"
   | "recent-merchants"
-  | "dismissed";
+  | "dismissed"
+  | "receipts"
+  | "merchant-intents"
+  | "notification-items";
 
 const isBrowser = () => typeof window !== "undefined";
 
