@@ -6,6 +6,8 @@ import { SUI_CONFIG } from "@/config/sui";
 
 const enokiApiKey = import.meta.env["VITE_ENOKI_API_KEY"]?.trim() ?? "";
 const googleClientId = import.meta.env["VITE_GOOGLE_CLIENT_ID"]?.trim() ?? "";
+const googleRedirectUrl =
+  typeof window === "undefined" ? undefined : new URL("/login", window.location.origin).toString();
 
 export const ENOKI_CONFIG = Object.freeze({
   apiKey: enokiApiKey,
@@ -20,6 +22,7 @@ const walletInitializers = ENOKI_CONFIG.configured
         providers: {
           google: {
             clientId: ENOKI_CONFIG.googleClientId,
+            ...(googleRedirectUrl ? { redirectUrl: googleRedirectUrl } : {}),
           },
         },
       }),

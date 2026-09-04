@@ -22,8 +22,8 @@ const phaseContent: Record<
     step: 1,
   },
   "awaiting-wallet": {
-    bubble: "your wallet has the final say",
-    detail: "Review and approve in Slush",
+    bubble: "authorizing with your account…",
+    detail: "Signing with your connected Sui account",
     step: 2,
   },
   confirming: {
@@ -154,7 +154,7 @@ export function PaymentRobot({
           ) : null}
           {!failed ? (
             <p className="mt-4 text-xs text-muted-foreground">
-              Keep this window open. SuiSure never approves a transaction for you.
+              Keep this window open. This payment started only after your confirmation.
             </p>
           ) : null}
         </div>
