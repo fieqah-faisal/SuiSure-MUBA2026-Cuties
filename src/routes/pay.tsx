@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
 
 import { AppShell } from "@/components/app/AppShell";
+import { PaymentRobot } from "@/components/payments/PaymentRobot";
 import { FileUploader } from "@/components/ui/file-uploader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -277,11 +278,20 @@ function AiTab() {
 
 function ReviewStage({ payload }: { payload: PaymentIntentQRPayload }) {
   const { account } = useSession();
-  const { executePayment, connectedAddress, readyToPay } = usePaymentExecution();
+  const {
+    executePayment,
+    connectedAddress,
+    readyToPay,
+    paymentPhase,
+    transactionDigest,
+    executionError,
+    resetPaymentState,
+  } = usePaymentExecution();
   const navigate = useNavigate();
   const [intent, setIntent] = useState<PaymentIntent | null>(null);
   const [risk, setRisk] = useState<RiskAssessment | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paying, setPaying] = useState(false);
 
   useEffect(() => {
@@ -314,6 +324,16 @@ function ReviewStage({ payload }: { payload: PaymentIntentQRPayload }) {
 
   return (
     <AppShell title="Review payment">
+      <PaymentRobot
+        phase={paymentPhase}
+        intentId={payload.paymentIntentId}
+        transactionDigest={transactionDigest}
+        error={paymentError ?? executionError}
+        onDismiss={() => {
+          setPaymentError(null);
+          resetPaymentState();
+        }}
+      />
       {error ? (
         <div className="surface-card p-6 text-center">
           <ShieldAlert className="mx-auto h-8 w-8 text-critical" />
@@ -367,14 +387,17 @@ function ReviewStage({ payload }: { payload: PaymentIntentQRPayload }) {
             onClick={() => {
               if (!account || !readyToPay) return;
               setPaying(true);
+              setPaymentError(null);
               void executePayment(intent)
                 .then((receipt) => {
-                  void navigate({
-                    to: "/receipt/$receiptId",
-                    params: { receiptId: receipt.receiptId },
-                  });
+                  window.setTimeout(() => {
+                    void navigate({
+                      to: "/receipt/$receiptId",
+                      params: { receiptId: receipt.receiptId },
+                    });
+                  }, 700);
                 })
-                .catch((e: Error) => setError(e.message))
+                .catch((e: Error) => setPaymentError(e.message))
                 .finally(() => setPaying(false));
             }}
           >
