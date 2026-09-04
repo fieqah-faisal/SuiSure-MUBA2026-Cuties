@@ -38,7 +38,8 @@ function ProfilePage() {
           {account ? shortAddress(account.address, 10, 8) : ""}
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
-          {SUI_CONFIG.networkLabel} · connected Sui wallet
+          {SUI_CONFIG.networkLabel} ·{" "}
+          {account?.provider === "google" ? "Google zkLogin account" : "connected Sui wallet"}
         </p>
         <div className="mt-4">
           <WalletConnectOption />
