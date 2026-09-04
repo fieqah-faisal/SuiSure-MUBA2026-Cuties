@@ -7,7 +7,7 @@ import {
   resolvePaymentIntent,
   verifyAgainstChain,
 } from "@/services/sui/intents";
-import { buildPaymentTransaction, getPayerBalance, listPayerCoins } from "@/services/sui/pay";
+import { buildPaymentTransaction, getPayerBalance } from "@/services/sui/pay";
 import type {
   PaymentIntent,
   PaymentIntentQRPayload,
@@ -206,13 +206,11 @@ export const paymentService = {
     if (coinType !== normalizeCoinType(intent.coinType ?? intent.tokenType)) {
       throw new Error("Payment token changed during review. Payment stopped.");
     }
-    const paymentCoins = await listPayerCoins(payerAddress, coinType);
     return buildPaymentTransaction({
       paymentIntentId: intent.objectId,
       merchantCredentialId: onChain.credential_id,
       amountBaseUnits: BigInt(onChain.amount),
       coinType,
-      paymentCoins,
     });
   },
 
@@ -241,11 +239,13 @@ export const paymentService = {
     return receipt;
   },
 
-  async getReceipt(receiptId: string): Promise<PaymentReceipt> {
+  async getReceipt(receiptId: string, payerAddress: string): Promise<PaymentReceipt> {
     const found = readReceipts().find(
       (receipt) => receipt.receiptId === receiptId || receipt.transactionDigest === receiptId,
     );
-    if (!found) throw new Error("Receipt not found on this device.");
+    if (!found || found.payerAddress.toLowerCase() !== payerAddress.toLowerCase()) {
+      throw new Error("Receipt not found for this connected account.");
+    }
     return found;
   },
 

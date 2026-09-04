@@ -402,7 +402,7 @@ function ReviewStage({ payload }: { payload: PaymentIntentQRPayload }) {
             }}
           >
             {paying
-              ? "Confirm in wallet…"
+              ? "Authorizing payment…"
               : !readyToPay
                 ? "Connect Testnet wallet to pay"
                 : blocked

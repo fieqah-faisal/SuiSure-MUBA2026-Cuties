@@ -1,4 +1,3 @@
-import { useCurrentAccount } from "@mysten/dapp-kit-react";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect } from "react";
 
@@ -6,21 +5,22 @@ import { SuiSureLogo } from "@/components/brand/Logo";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/hooks/useSession";
 
+const GoogleZkLoginOption = lazy(() => import("@/components/GoogleZkLoginOption"));
 const WalletConnectOption = lazy(() => import("@/components/WalletConnectOption"));
 
 export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
-      { title: "Connect to SuiSure" },
+      { title: "Sign in to SuiSure" },
       {
         name: "description",
         content:
-          "Connect a self-custodial Sui wallet to pay verified merchants safely on Sui Testnet.",
+          "Sign in with Google zkLogin or connect a self-custodial wallet to pay verified merchants on Sui Testnet.",
       },
-      { property: "og:title", content: "Connect to SuiSure" },
+      { property: "og:title", content: "Sign in to SuiSure" },
       {
         property: "og:description",
-        content: "Connect your Sui wallet to review and approve verified Testnet payments.",
+        content: "Use Google zkLogin or your Sui wallet for verified Testnet payments.",
       },
     ],
   }),
@@ -28,14 +28,8 @@ export const Route = createFileRoute("/login")({
 });
 
 function LoginPage() {
-  const { account, signInWithWallet, ready } = useSession();
-  const walletAccount = useCurrentAccount();
-  const walletAddress = walletAccount?.address;
+  const { account, ready } = useSession();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    if (walletAddress) signInWithWallet(walletAddress);
-  }, [walletAddress, signInWithWallet]);
 
   useEffect(() => {
     if (ready && account) void navigate({ to: "/app" });
@@ -55,13 +49,20 @@ function LoginPage() {
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-5 pb-12">
         <h1 className="text-2xl font-bold tracking-tight text-navy">Sign in or create account</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Connect a self-custodial Sui wallet. SuiSure cannot approve payments without you.
+          Use your Google account for passwordless zkLogin, or connect a Sui wallet. Only you can
+          approve payments.
         </p>
 
         <div className="mt-6 space-y-3">
-          <Button size="lg" className="w-full" disabled>
-            Continue with Google (coming soon)
-          </Button>
+          <Suspense
+            fallback={
+              <Button size="lg" className="w-full" disabled>
+                Preparing Google sign-in…
+              </Button>
+            }
+          >
+            <GoogleZkLoginOption />
+          </Suspense>
           <Button size="lg" variant="outline" className="w-full" disabled>
             Continue with Apple (coming soon)
           </Button>
@@ -80,8 +81,9 @@ function LoginPage() {
         </div>
 
         <p className="mt-6 text-xs leading-relaxed text-muted-foreground">
-          By continuing you agree to the SuiSure Terms of Service and Privacy Notice. Wallet
-          connections use Sui Wallet Standard. Social zkLogin is coming soon.
+          By continuing you agree to the SuiSure Terms of Service and Privacy Notice. Google sign-in
+          creates a self-custodial Sui account using zkLogin. Wallet connections use Sui Wallet
+          Standard.
         </p>
       </main>
     </div>

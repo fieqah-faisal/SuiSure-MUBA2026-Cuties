@@ -105,6 +105,8 @@ export interface AppNotification {
   kind: "payment" | "merchant" | "security" | "system";
   createdAt: string;
   read: boolean;
+  /** Connected account allowed to see this locally persisted notification. */
+  accountAddress: string;
 }
 
 export interface AiParsedIntent {

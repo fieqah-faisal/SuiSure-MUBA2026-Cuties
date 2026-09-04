@@ -17,6 +17,7 @@ import { useSession } from "@/hooks/useSession";
 import { notificationService } from "@/services/notifications/notification.service";
 import { paymentService } from "@/services/payments/payment.service";
 import { listMerchantPaymentActivity } from "@/services/sui/activity";
+import { normalizeAddress } from "@/services/sui/client";
 import type { MerchantPaymentActivity, PaymentReceipt } from "@/types/domain";
 
 export const Route = createFileRoute("/activity")({
@@ -44,6 +45,7 @@ type ActivityItem =
 
 function ActivityPage() {
   const { account, credential } = useSession();
+  const accountAddress = account?.address;
   const [filter, setFilter] = useState<ActivityFilter>("all");
   const [sent, setSent] = useState<PaymentReceipt[]>([]);
   const [received, setReceived] = useState<MerchantPaymentActivity[]>([]);
@@ -59,16 +61,30 @@ function ActivityPage() {
           paymentService.listReceipts(account?.address),
           credential ? listMerchantPaymentActivity(credential, { refresh }) : Promise.resolve([]),
         ]);
-        incoming.forEach((payment) => notificationService.addMerchantPaymentReceived(payment));
-        setSent(outgoing);
-        setReceived(incoming);
+        const scopedOutgoing = accountAddress
+          ? outgoing.filter(
+              (receipt) =>
+                normalizeAddress(receipt.payerAddress) === normalizeAddress(accountAddress),
+            )
+          : [];
+        const scopedIncoming = accountAddress
+          ? incoming.filter(
+              (payment) =>
+                normalizeAddress(payment.merchantAddress) === normalizeAddress(accountAddress),
+            )
+          : [];
+        scopedIncoming.forEach((payment) =>
+          notificationService.addMerchantPaymentReceived(payment),
+        );
+        setSent(scopedOutgoing);
+        setReceived(scopedIncoming);
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : "Transaction history could not load.");
       } finally {
         setLoading(false);
       }
     },
-    [account?.address, credential],
+    [accountAddress, credential],
   );
 
   useEffect(() => {

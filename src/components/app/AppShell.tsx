@@ -45,7 +45,7 @@ export function AppShell({
           const incoming = await listMerchantPaymentActivity(credential);
           incoming.forEach((payment) => notificationService.addMerchantPaymentReceived(payment));
         }
-        const items = await notificationService.list();
+        const items = await notificationService.list(account.address);
         if (!cancelled) setHasUnreadNotifications(items.some((item) => !item.read));
       } catch {
         // Activity pages surface network errors; navigation must remain available.
@@ -64,10 +64,10 @@ export function AppShell({
     () =>
       notificationService.subscribe(() => {
         void notificationService
-          .list()
+          .list(account?.address ?? "")
           .then((items) => setHasUnreadNotifications(items.some((item) => !item.read)));
       }),
-    [],
+    [account?.address],
   );
 
   if (!ready || !account) {

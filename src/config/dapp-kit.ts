@@ -1,11 +1,38 @@
 import { createDAppKit } from "@mysten/dapp-kit-react";
+import { enokiWalletsInitializer } from "@mysten/enoki";
 import { SuiGrpcClient } from "@mysten/sui/grpc";
 
 import { SUI_CONFIG } from "@/config/sui";
 
+const enokiApiKey = import.meta.env["VITE_ENOKI_API_KEY"]?.trim() ?? "";
+const googleClientId = import.meta.env["VITE_GOOGLE_CLIENT_ID"]?.trim() ?? "";
+const googleRedirectUrl =
+  typeof window === "undefined" ? undefined : new URL("/login", window.location.origin).toString();
+
+export const ENOKI_CONFIG = Object.freeze({
+  apiKey: enokiApiKey,
+  googleClientId,
+  configured: Boolean(enokiApiKey && googleClientId),
+});
+
+const walletInitializers = ENOKI_CONFIG.configured
+  ? [
+      enokiWalletsInitializer({
+        apiKey: ENOKI_CONFIG.apiKey,
+        providers: {
+          google: {
+            clientId: ENOKI_CONFIG.googleClientId,
+            ...(googleRedirectUrl ? { redirectUrl: googleRedirectUrl } : {}),
+          },
+        },
+      }),
+    ]
+  : [];
+
 export const dAppKit = createDAppKit({
   networks: ["testnet"],
   defaultNetwork: "testnet",
+  walletInitializers,
 
   createClient: (network) =>
     new SuiGrpcClient({

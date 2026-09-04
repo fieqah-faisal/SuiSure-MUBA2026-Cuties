@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app/AppShell";
 import { Button } from "@/components/ui/button";
 import { SUI_CONFIG, explorerTxUrl, shortAddress } from "@/config/sui";
+import { useSession } from "@/hooks/useSession";
 import { paymentService } from "@/services/payments/payment.service";
 import type { PaymentReceipt } from "@/types/domain";
 
@@ -25,15 +26,19 @@ export const Route = createFileRoute("/receipt/$receiptId")({
 
 function ReceiptPage() {
   const { receiptId } = Route.useParams();
+  const { account } = useSession();
   const [receipt, setReceipt] = useState<PaymentReceipt | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!account?.address) return;
+    setReceipt(null);
+    setError(null);
     void paymentService
-      .getReceipt(receiptId)
+      .getReceipt(receiptId, account.address)
       .then(setReceipt)
       .catch((e: Error) => setError(e.message));
-  }, [receiptId]);
+  }, [receiptId, account?.address]);
 
   return (
     <AppShell title="Receipt">
