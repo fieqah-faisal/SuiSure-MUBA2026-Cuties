@@ -1,11 +1,9 @@
 import type { SuiNetwork } from "@/types/domain";
 
 /**
- * Central Sui configuration module.
+ * Central configuration for the live Sui Testnet integration.
  *
- * The application targets Sui Testnet. Blockchain access is expressed through
- * typed service interfaces so that a real Sui client (@mysten/sui + dApp Kit)
- * can be wired in without changing UI code.
+ * All object and package IDs below refer to deployed Testnet resources.
  */
 export const SUI_CONFIG = {
   network: "testnet" as SuiNetwork,
@@ -23,16 +21,8 @@ export const SUI_CONFIG = {
   explorerBaseUrl: "https://suiscan.xyz/testnet",
   defaultToken: "USDC",
   /**
-   * Mock mode: no real Sui RPC calls are made and payments are simulated
-   * locally. Live mode requires the Sui service adapters to be implemented.
-   */
-  mockMode: true,
-
-  /**
-   * Deployment handoff values, owned by the Move lane and filled in as the
-   * steps in MOVE_BUILD_PLAN.md complete. Every value is empty until it has
-   * been read off testnet — never guess or invent one. Each is annotated
-   * `as string` so it keeps a widened type once a real value lands here.
+   * Deployed Testnet resources. Keep these values tied to the checked-in Move
+   * package and verify replacements on-chain before updating them.
    */
 
   /** payment_kit package ID — owner of the testnet Namespace object's type. Step 1. */
@@ -84,9 +74,9 @@ export const SUI_CONFIG = {
    */
   upgradeCapId: "0xd26f7d957bf698eeeff291a720df444a6090a86e9d0bd4648ae2ec9a8241d2c0" as string,
   /**
-   * Pre-made unpaid payment requests for demoing and testing, valid until
-   * 10 September 2026 — past both the 5 September submission and the
-   * 6 September pitch. Both are USDC.
+   * Pre-made payment requests for demoing and testing, valid until
+   * 10 September 2026. Both settle in Testnet USDC. Availability is checked
+   * on-chain before either request is offered in the UI.
    *
    *   [0] Kopitiam Seri Damai — RM12.00 / 2.553191 USDC — DEMO-KOPI-01
    *   [1] Campus Cafe         — RM8.00  / 1.702128 USDC — DEMO-CAFE-01
