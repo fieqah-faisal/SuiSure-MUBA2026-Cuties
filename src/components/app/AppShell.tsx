@@ -53,8 +53,10 @@ export function AppShell({
     };
 
     void syncNotifications();
+    const intervalId = window.setInterval(() => void syncNotifications(), 30_000);
     return () => {
       cancelled = true;
+      window.clearInterval(intervalId);
     };
   }, [ready, account, credential]);
 

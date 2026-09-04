@@ -27,7 +27,9 @@ function NotificationsPage() {
   const [items, setItems] = useState<AppNotification[] | null>(null);
 
   useEffect(() => {
-    void notificationService.list().then(setItems);
+    const refresh = () => void notificationService.list().then(setItems);
+    refresh();
+    return notificationService.subscribe(refresh);
   }, []);
 
   return (
@@ -63,7 +65,9 @@ function NotificationsPage() {
               className={`surface-card p-4 ${n.read ? "opacity-70" : ""}`}
               onClick={() => {
                 notificationService.markRead(n.id);
-                setItems((prev) => (prev ?? []).map((x) => (x.id === n.id ? { ...x, read: true } : x)));
+                setItems((prev) =>
+                  (prev ?? []).map((x) => (x.id === n.id ? { ...x, read: true } : x)),
+                );
               }}
             >
               <p className="text-sm font-semibold">{n.title}</p>
