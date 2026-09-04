@@ -1,6 +1,7 @@
-import { Check, ExternalLink, LogOut, Wallet } from "lucide-react";
+import { isEnokiWallet } from "@mysten/enoki";
 import { useDAppKit, useWalletConnection, useWallets } from "@mysten/dapp-kit-react";
-import { useState } from "react";
+import { Check, ExternalLink, LogOut, Wallet } from "lucide-react";
+import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +20,7 @@ export default function WalletConnectOption() {
   const [accountDialogOpen, setAccountDialogOpen] = useState(false);
   const [error, setError] = useState<string>();
 
+  const externalWallets = useMemo(() => wallets.filter((wallet) => !isEnokiWallet(wallet)), [wallets]);
   const busy = connection.status === "connecting" || connection.status === "reconnecting";
   const address = connection.status === "connected" ? connection.account.address : undefined;
   const connectedWallet = connection.status === "connected" ? connection.wallet : undefined;
@@ -60,8 +62,8 @@ export default function WalletConnectOption() {
             <DialogDescription>Select an installed wallet or Slush web wallet.</DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            {wallets.length ? (
-              wallets.map((wallet, index) => (
+            {externalWallets.length ? (
+              externalWallets.map((wallet, index) => (
                 <Button
                   key={`${wallet.name}-${index}`}
                   variant="outline"
@@ -100,8 +102,8 @@ export default function WalletConnectOption() {
       <Dialog open={accountDialogOpen} onOpenChange={setAccountDialogOpen}>
         <DialogContent className="max-w-sm rounded-2xl">
           <DialogHeader>
-            <DialogTitle>Connected wallet</DialogTitle>
-            <DialogDescription>Manage the wallet account used by SuiSure.</DialogDescription>
+            <DialogTitle>Connected account</DialogTitle>
+            <DialogDescription>Manage the Sui account used by SuiSure.</DialogDescription>
           </DialogHeader>
 
           {connectedWallet && connection.status === "connected" ? (
@@ -161,7 +163,7 @@ export default function WalletConnectOption() {
                 }}
               >
                 <LogOut className="h-4 w-4" />
-                Disconnect wallet
+                Disconnect account
               </Button>
             </div>
           ) : null}
