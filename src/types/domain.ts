@@ -84,6 +84,21 @@ export interface PaymentReceipt {
   timestamp: string;
 }
 
+export interface MerchantPaymentActivity {
+  activityId: string;
+  paymentIntentId: string;
+  merchantObjectId: string;
+  merchantName: string;
+  tokenAmount: number;
+  tokenType: string;
+  approxMyr: number;
+  payerAddress: string;
+  merchantAddress: string;
+  transactionDigest: string;
+  network: SuiNetwork;
+  timestamp: string;
+}
+
 export interface AppNotification {
   id: string;
   title: string;
