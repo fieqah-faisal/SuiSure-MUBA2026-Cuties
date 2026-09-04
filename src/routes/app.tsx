@@ -40,14 +40,15 @@ export const Route = createFileRoute("/app")({
 });
 
 function CustomerDashboard() {
-  const { account, balance, balanceToken, isMerchant, viewMode, setViewMode } = useSession();
+  const { account, balance, balanceToken, gasBalance, isMerchant, viewMode, setViewMode } =
+    useSession();
   const [receipts, setReceipts] = useState<PaymentReceipt[] | null>(null);
   const [merchants, setMerchants] = useState<VerifiedMerchant[]>([]);
 
   useEffect(() => {
-    void paymentService.listReceipts().then(setReceipts);
+    void paymentService.listReceipts(account?.address).then(setReceipts);
     void merchantService.listVerifiedMerchants().then(setMerchants);
-  }, []);
+  }, [account?.address]);
 
   return (
     <AppShell>
@@ -56,38 +57,43 @@ function CustomerDashboard() {
       <BalanceWidget
         balance={balance}
         balanceToken={balanceToken}
+        gasBalance={gasBalance}
         address={account?.address}
         displayName={account?.displayName}
       />
 
-      <section className="mt-5 grid grid-cols-4 gap-2">
+      <section className="mt-5 grid grid-cols-4 gap-3">
         {[
           { to: "/pay" as const, label: "Scan", icon: QrCode, search: { tab: "scan" as const } },
-          { to: "/pay" as const, label: "Upload", icon: Upload, search: { tab: "upload" as const } },
-          { to: "/pay" as const, label: "Ask AI", icon: MessageSquareText, search: { tab: "ai" as const } },
+          {
+            to: "/pay" as const,
+            label: "Upload",
+            icon: Upload,
+            search: { tab: "upload" as const },
+          },
+          {
+            to: "/pay" as const,
+            label: "Ask AI",
+            icon: MessageSquareText,
+            search: { tab: "ai" as const },
+          },
           { to: "/activity" as const, label: "Activity", icon: Activity, search: undefined },
         ].map((action) => (
           <Link
             key={action.label}
             to={action.to}
             {...(action.search ? { search: action.search } : {})}
-            className="flex flex-col items-center gap-2 text-center transition-transform active:scale-95"
+            className={
+              action.label === "Scan"
+                ? "flex h-24 min-w-0 flex-col items-center justify-center gap-2 rounded-2xl bg-primary text-center text-primary-foreground shadow-[var(--shadow-card)] transition-transform active:scale-95"
+                : "flex h-24 min-w-0 flex-col items-center justify-center gap-2 rounded-2xl border border-border bg-card text-center text-foreground transition-transform active:scale-95"
+            }
           >
-            <span
-              className={
-                action.label === "Scan"
-                  ? "flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[var(--shadow-card)]"
-                  : "flex h-14 w-14 items-center justify-center rounded-full border border-border bg-card text-foreground"
-              }
-            >
-              <action.icon className="h-5 w-5" />
-            </span>
-            <span className="text-[11px] font-medium text-muted-foreground">{action.label}</span>
+            <action.icon className="h-6 w-6" />
+            <span className="truncate text-xs font-medium">{action.label}</span>
           </Link>
         ))}
       </section>
-
-
 
       {isMerchant ? (
         <section className="surface-card mt-5 flex items-center justify-between p-4">
@@ -118,8 +124,10 @@ function CustomerDashboard() {
               <Store className="h-5 w-5" />
             </span>
             <div>
-              <p className="text-sm font-semibold">Apply as Merchant</p>
-              <p className="text-xs text-muted-foreground">Accept SuiSure payments at your shop.</p>
+              <p className="text-sm font-semibold">Merchant registration</p>
+              <p className="text-xs text-muted-foreground">
+                Get an administrator-issued Testnet credential.
+              </p>
             </div>
           </div>
           <ChevronRight className="h-4 w-4 text-muted-foreground" />

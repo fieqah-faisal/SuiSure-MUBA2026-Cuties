@@ -1,11 +1,10 @@
+import { DEMO_MERCHANT_CREDENTIAL_IDS } from "@/config/demo-intents";
 import type { SuiNetwork } from "@/types/domain";
 
 /**
- * Central Sui configuration module.
+ * Central configuration for the live Sui Testnet integration.
  *
- * The application targets Sui Testnet. Blockchain access is expressed through
- * typed service interfaces so that a real Sui client (@mysten/sui + dApp Kit)
- * can be wired in without changing UI code.
+ * All object and package IDs below refer to deployed Testnet resources.
  */
 export const SUI_CONFIG = {
   network: "testnet" as SuiNetwork,
@@ -21,18 +20,10 @@ export const SUI_CONFIG = {
   /** @deprecated JSON-RPC is disabled on public fullnodes. Use grpcUrl. */
   rpcUrl: "https://fullnode.testnet.sui.io:443",
   explorerBaseUrl: "https://suiscan.xyz/testnet",
-  defaultToken: "SUI",
+  defaultToken: "USDC",
   /**
-   * Mock mode: no real Sui RPC calls are made and payments are simulated
-   * locally. Live mode requires the Sui service adapters to be implemented.
-   */
-  mockMode: true,
-
-  /**
-   * Deployment handoff values, owned by the Move lane and filled in as the
-   * steps in MOVE_BUILD_PLAN.md complete. Every value is empty until it has
-   * been read off testnet — never guess or invent one. Each is annotated
-   * `as string` so it keeps a widened type once a real value lands here.
+   * Deployed Testnet resources. Keep these values tied to the checked-in Move
+   * package and verify replacements on-chain before updating them.
    */
 
   /** payment_kit package ID — owner of the testnet Namespace object's type. Step 1. */
@@ -84,36 +75,16 @@ export const SUI_CONFIG = {
    */
   upgradeCapId: "0xd26f7d957bf698eeeff291a720df444a6090a86e9d0bd4648ae2ec9a8241d2c0" as string,
   /**
-   * Pre-made unpaid payment requests for demoing and testing, valid until
-   * 10 September 2026 — past both the 5 September submission and the
-   * 6 September pitch. Both are USDC.
-   *
-   *   [0] Kopitiam Seri Damai — RM12.00 / 2.553191 USDC — DEMO-KOPI-01
-   *   [1] Campus Cafe         — RM8.00  / 1.702128 USDC — DEMO-CAFE-01
-   *
-   * Paying one marks it paid permanently. Create replacements with
-   * create_payment_intent<T> rather than expecting to reuse these.
-   */
-  demoIntentIds: [
-    "0x204dc2dfc0a8eabb9d7730a7e89c5d979fc686991d6579b06d6bf03eb0c57fa7",
-    "0x005ecc8f3445bdbd84830a1701b681c126aa41ae8325d8946350e3746572772e",
-  ] as string[],
-  /**
    * A completed end-to-end payment on testnet, proving the whole flow:
    * 2.553191 USDC (RM12.00) from the payer to Kopitiam Seri Damai's
    * registered payout address, via payment_kit. Step 6.
    */
   sampleTxDigest: "FhtaB57tHhv5nrxKhQP4o1miyjhykFLYKDD6BCP3oQcw" as string,
   /**
-   * Shared MerchantCredential object IDs for the demo merchants, in order:
-   *   [0] Kopitiam Seri Damai — Food & Beverage
-   *   [1] Campus Cafe         — Food & Beverage
-   * Steps 3 and 6.
+   * Shared MerchantCredential object IDs for every pre-created demo merchant.
+   * The full merchant and intent inventory lives in src/config/demo-intents.ts.
    */
-  merchantCredentialIds: [
-    "0x73ffe36c370cd0e768e85f59e3c53eba557a3ccc123992d8062f2cbcc063d68f",
-    "0xe0b13c411e139c254e8752f2bd4084d20f2767a31cca3cdeff47ad2175d234b3",
-  ] as string[],
+  merchantCredentialIds: DEMO_MERCHANT_CREDENTIAL_IDS,
 } as const;
 
 export const explorerTxUrl = (digest: string) => `${SUI_CONFIG.explorerBaseUrl}/tx/${digest}`;

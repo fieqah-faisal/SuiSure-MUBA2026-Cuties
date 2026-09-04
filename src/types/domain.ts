@@ -1,19 +1,8 @@
 import { z } from "zod";
 
-export type NetworkStatus =
-  | "online"
-  | "offline"
-  | "degraded"
-  | "unavailable"
-  | "wrong-network";
+export type NetworkStatus = "online" | "offline" | "degraded" | "unavailable" | "wrong-network";
 
-export type PaymentStatus =
-  | "draft"
-  | "pending"
-  | "confirmed"
-  | "declined"
-  | "failed"
-  | "expired";
+export type PaymentStatus = "draft" | "pending" | "confirmed" | "declined" | "failed" | "expired";
 
 export type RiskLevel = "low" | "medium" | "high" | "blocked";
 
@@ -21,7 +10,7 @@ export type SuiNetwork = "testnet" | "mainnet" | "devnet" | "localnet";
 
 export interface SuiAccount {
   address: string;
-  provider: "google" | "wallet" | "mock";
+  provider: "google" | "wallet";
   displayName: string;
   email?: string | undefined;
 }
@@ -33,7 +22,6 @@ export interface MerchantCredential {
   receivingAddress: string;
   acceptedToken: string;
   active: boolean;
-  verifiedAt: string;
 }
 
 export interface VerifiedMerchant {
@@ -55,19 +43,14 @@ export interface PaymentIntent {
   amountMyr: number;
   tokenAmount: number;
   tokenType: string;
+  /** Full Sui coin type used for transaction construction. */
+  coinType?: string | undefined;
   description?: string | undefined;
   orderReference?: string | undefined;
   network: SuiNetwork;
   createdAt: string;
   expiresAt: string;
   status: PaymentStatus;
-}
-
-export interface ConversionQuote {
-  rateMyrPerToken: number;
-  tokenType: string;
-  quotedAt: string;
-  expiresAt: string;
 }
 
 export interface VerificationCheck {
@@ -100,6 +83,21 @@ export interface PaymentReceipt {
   timestamp: string;
 }
 
+export interface MerchantPaymentActivity {
+  activityId: string;
+  paymentIntentId: string;
+  merchantObjectId: string;
+  merchantName: string;
+  tokenAmount: number;
+  tokenType: string;
+  approxMyr: number;
+  payerAddress: string;
+  merchantAddress: string;
+  transactionDigest: string;
+  network: SuiNetwork;
+  timestamp: string;
+}
+
 export interface AppNotification {
   id: string;
   title: string;
@@ -121,12 +119,14 @@ export interface AiParsedIntent {
   clarificationQuestion?: string | undefined;
 }
 
+const suiObjectIdSchema = z.string().regex(/^0x[0-9a-fA-F]{64}$/, "Invalid Sui object ID");
+
 export const paymentIntentQrPayloadSchema = z.object({
   v: z.literal(1),
   type: z.literal("suisure.payment-intent"),
   network: z.enum(["testnet", "mainnet", "devnet", "localnet"]),
-  paymentIntentId: z.string().min(3),
-  merchantObjectId: z.string().min(3),
+  paymentIntentId: suiObjectIdSchema,
+  merchantObjectId: suiObjectIdSchema,
 });
 
 export type PaymentIntentQRPayload = z.infer<typeof paymentIntentQrPayloadSchema>;

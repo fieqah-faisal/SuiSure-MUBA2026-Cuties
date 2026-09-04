@@ -1,20 +1,14 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import {
-  Activity,
-  Bell,
-  Home,
-  QrCode,
-  Store,
-  User,
-  Wallet,
-} from "lucide-react";
-import { useEffect, type ReactNode } from "react";
+import { Activity, Bell, Home, QrCode, Store, User, Wallet } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { SuiSureLogo } from "@/components/brand/Logo";
 import { NetworkPill } from "@/components/app/NetworkPill";
 import Footer17 from "@/components/ui/footer";
 import { useSession } from "@/hooks/useSession";
 import { cn } from "@/lib/utils";
+import { notificationService } from "@/services/notifications/notification.service";
+import { listMerchantPaymentActivity } from "@/services/sui/activity";
 
 const navItems = [
   { to: "/app", label: "Home", icon: Home },
@@ -32,13 +26,49 @@ export function AppShell({
   title?: string;
   requireMerchant?: boolean;
 }) {
-  const { ready, account, isMerchant } = useSession();
+  const { ready, account, isMerchant, credential } = useSession();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
 
   useEffect(() => {
     if (ready && !account) void navigate({ to: "/login" });
   }, [ready, account, navigate]);
+
+  useEffect(() => {
+    if (!ready || !account) return;
+    let cancelled = false;
+
+    const syncNotifications = async () => {
+      try {
+        if (credential) {
+          const incoming = await listMerchantPaymentActivity(credential);
+          incoming.forEach((payment) => notificationService.addMerchantPaymentReceived(payment));
+        }
+        const items = await notificationService.list();
+        if (!cancelled) setHasUnreadNotifications(items.some((item) => !item.read));
+      } catch {
+        // Activity pages surface network errors; navigation must remain available.
+      }
+    };
+
+    void syncNotifications();
+    const intervalId = window.setInterval(() => void syncNotifications(), 30_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [ready, account, credential]);
+
+  useEffect(
+    () =>
+      notificationService.subscribe(() => {
+        void notificationService
+          .list()
+          .then((items) => setHasUnreadNotifications(items.some((item) => !item.read)));
+      }),
+    [],
+  );
 
   if (!ready || !account) {
     return (
@@ -57,7 +87,7 @@ export function AppShell({
           This account does not hold a merchant credential on Sui Testnet.
         </p>
         <Link to="/merchant/apply" className="text-sm font-semibold text-primary">
-          Apply to become a verified merchant
+          View merchant registration
         </Link>
       </div>
     );
@@ -116,9 +146,15 @@ export function AppShell({
             <Link
               to="/notifications"
               aria-label="Notifications"
-              className="rounded-lg border border-border p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="relative rounded-lg border border-border p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
               <Bell className="h-4.5 w-4.5" />
+              {hasUnreadNotifications ? (
+                <span
+                  aria-label="Unread notifications"
+                  className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-critical ring-2 ring-background"
+                />
+              ) : null}
             </Link>
           </div>
         </div>
@@ -151,7 +187,11 @@ export function AppShell({
         socialLinks={[
           { label: "LINKEDIN", href: "/coming-soon", icon: "linkedin" },
           { label: "TWITTER", href: "/coming-soon", icon: "twitter" },
-          { label: "GITHUB", href: "https://github.com/fieqah-faisal/SuiSure-MUBA2026-Cuties.git", icon: "github" },
+          {
+            label: "GITHUB",
+            href: "https://github.com/fieqah-faisal/SuiSure-MUBA2026-Cuties.git",
+            icon: "github",
+          },
         ]}
         legalText="© 2026 SuiSure by Cuties - Build at MUBA Blockchain Hackathon 2026 on Sui. All rights reserved."
         bottomLinks={[

@@ -158,3 +158,62 @@
   backdrop-filter: blur(14px);
 }
 
+/* Match both states of dApp Kit's wallet web component to our sign-in buttons. */
+.suisure-wallet-connect,
+.suisure-wallet-connect mysten-dapp-kit-connect-button,
+.suisure-wallet-connect-control {
+  display: block !important;
+  width: 100% !important;
+  max-width: none !important;
+}
+
+.suisure-wallet-connect mysten-dapp-kit-connect-button::part(trigger) {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 100%;
+  height: 2.5rem;
+  padding-inline: 2rem;
+  border-radius: calc(var(--radius) - 2px);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+@keyframes payment-robot-blink {
+  0%,
+  44%,
+  50%,
+  100% {
+    transform: scaleY(1);
+  }
+  47% {
+    transform: scaleY(0.08);
+  }
+}
+
+@keyframes payment-robot-antenna {
+  0%,
+  100% {
+    background-color: var(--color-warning);
+    box-shadow: 0 0 0.8rem color-mix(in oklab, var(--color-warning) 70%, transparent);
+  }
+  50% {
+    background-color: var(--color-critical);
+    box-shadow: 0 0 0.8rem color-mix(in oklab, var(--color-critical) 70%, transparent);
+  }
+}
+
+.payment-robot-eye {
+  animation: payment-robot-blink 3.4s ease-in-out infinite;
+  transform-origin: center;
+}
+
+.payment-robot-antenna {
+  animation: payment-robot-antenna 0.9s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .payment-robot-eye,
+  .payment-robot-antenna {
+    animation: none;
+  }
+}

@@ -9,9 +9,9 @@ import GrainCarousel, { type GrainCarouselItem } from "@/components/lightswind/g
 import ScrollList from "@/components/lightswind/scroll-list";
 import Footer17 from "@/components/ui/footer";
 
-import qrAsset from "@/assets/image-5.png.asset.json";
-import payAsset from "@/assets/image-6.png.asset.json";
-import controlAsset from "@/assets/image-7.png.asset.json";
+import qrAsset from "@/assets/image-5.png";
+import payAsset from "@/assets/image-6.png";
+import controlAsset from "@/assets/image-7.png";
 
 import { SUI_CONFIG } from "@/config/sui";
 import { Button } from "@/components/ui/button";
@@ -42,8 +42,8 @@ const carouselItems: GrainCarouselItem[] = [
     badge: "Start",
     title: "Pay by QR or plain language",
     subtitle: "Scan, upload a screenshot, or simply tell SuiSure what you want to pay.",
-    imageA: qrAsset.url,
-    imageB: payAsset.url,
+    imageA: qrAsset,
+    imageB: payAsset,
     accentColor: "#7CE0FF",
   },
   {
@@ -51,8 +51,8 @@ const carouselItems: GrainCarouselItem[] = [
     badge: "Verify",
     title: "Verify merchants first",
     subtitle: "Every merchant and payment request is checked against Sui before you pay.",
-    imageA: payAsset.url,
-    imageB: controlAsset.url,
+    imageA: payAsset,
+    imageB: controlAsset,
     accentColor: "#7CE0FF",
   },
   {
@@ -60,12 +60,11 @@ const carouselItems: GrainCarouselItem[] = [
     badge: "Control",
     title: "You stay in control",
     subtitle: "The assistant explains the payment. Only your signature can send it.",
-    imageA: controlAsset.url,
-    imageB: qrAsset.url,
+    imageA: controlAsset,
+    imageB: qrAsset,
     accentColor: "#7CE0FF",
   },
 ];
-
 
 const sectionVariants: Variants = {
   hidden: {},
@@ -183,7 +182,6 @@ function Landing() {
           </motion.div>
         </section>
 
-
         <main className="relative z-10 mx-auto max-w-5xl px-5 pb-20">
           <section id="how-it-works" className="scroll-mt-24 py-16 sm:py-20">
             <h2 className="text-center text-3xl font-bold uppercase tracking-tight text-foreground sm:text-4xl">
@@ -200,7 +198,6 @@ function Landing() {
               autoplayInterval={5000}
             />
           </section>
-
 
           <section id="steps" className="scroll-mt-24 py-16 sm:py-20">
             <h2 className="text-center text-3xl font-bold uppercase tracking-tight text-foreground sm:text-4xl">
@@ -229,7 +226,9 @@ function Landing() {
                     {index + 1}
                   </span>
                   <div>
-                    <p className="text-xl font-semibold text-foreground sm:text-2xl">{item.title}</p>
+                    <p className="text-xl font-semibold text-foreground sm:text-2xl">
+                      {item.title}
+                    </p>
                     <p className="mt-1 text-base text-muted-foreground sm:text-lg">
                       {item.description}
                     </p>
@@ -238,7 +237,6 @@ function Landing() {
               )}
             />
           </section>
-
         </main>
       </div>
 
@@ -266,7 +264,11 @@ function Landing() {
         socialLinks={[
           { label: "LINKEDIN", href: "/coming-soon", icon: "linkedin" },
           { label: "TWITTER", href: "/coming-soon", icon: "twitter" },
-          { label: "GITHUB", href: "https://github.com/fieqah-faisal/SuiSure-MUBA2026-Cuties.git", icon: "github" },
+          {
+            label: "GITHUB",
+            href: "https://github.com/fieqah-faisal/SuiSure-MUBA2026-Cuties.git",
+            icon: "github",
+          },
         ]}
         legalText="© 2026 SuiSure by Cuties - Build at MUBA Blockchain Hackathon 2026 on Sui. All rights reserved."
         bottomLinks={[
@@ -277,4 +279,3 @@ function Landing() {
     </div>
   );
 }
-
