@@ -1,11 +1,12 @@
 import { useCurrentAccount } from "@mysten/dapp-kit-react";
-import { ConnectButton } from "@mysten/dapp-kit-react/ui";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 
 import { SuiSureLogo } from "@/components/brand/Logo";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/hooks/useSession";
+
+const WalletConnectOption = lazy(() => import("@/components/WalletConnectOption"));
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -25,17 +26,6 @@ export const Route = createFileRoute("/login")({
   }),
   component: LoginPage,
 });
-
-function WalletConnectOption() {
-  return (
-    <div className="suisure-wallet-connect">
-      <ConnectButton
-        className="suisure-wallet-connect-control"
-        style={{ display: "block", width: "100%" }}
-      />
-    </div>
-  );
-}
 
 function LoginPage() {
   const { account, signInWithWallet, ready } = useSession();
@@ -78,7 +68,15 @@ function LoginPage() {
           <Button size="lg" variant="outline" className="w-full" disabled>
             Continue with Facebook (coming soon)
           </Button>
-          <WalletConnectOption />
+          <Suspense
+            fallback={
+              <Button size="lg" className="w-full" disabled>
+                Loading wallets…
+              </Button>
+            }
+          >
+            <WalletConnectOption />
+          </Suspense>
         </div>
 
         <p className="mt-6 text-xs leading-relaxed text-muted-foreground">

@@ -6,15 +6,15 @@ import {
   useRouter,
   HeadContent,
   Scripts,
+  ClientOnly,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
-import { DAppKitProvider } from "@mysten/dapp-kit-react";
-import { dAppKit } from "@/config/dapp-kit";
+import { lazy, Suspense, useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
-import { SessionProvider } from "@/hooks/useSession";
+
+const SuiAppProviders = lazy(() => import("@/components/SuiAppProviders"));
 
 function NotFoundComponent() {
   return (
@@ -77,6 +77,9 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+  // Wallet-standard discovery is browser-only. Render the application after
+  // hydration so the Firebase Node server never evaluates wallet APIs.
+  ssr: false,
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -136,13 +139,15 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <DAppKitProvider dAppKit={dAppKit}>
-        <SessionProvider>
-          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-          <Outlet />
-          <Toaster />
-        </SessionProvider>
-      </DAppKitProvider>
+      <ClientOnly fallback={<div className="min-h-screen bg-background" />}>
+        <Suspense fallback={<div className="min-h-screen bg-background" />}>
+          <SuiAppProviders>
+            {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+            <Outlet />
+            <Toaster />
+          </SuiAppProviders>
+        </Suspense>
+      </ClientOnly>
     </QueryClientProvider>
   );
 }
