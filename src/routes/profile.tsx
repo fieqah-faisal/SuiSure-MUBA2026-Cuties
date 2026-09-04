@@ -2,6 +2,7 @@ import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { LogOut, ShieldCheck, Trash2 } from "lucide-react";
 
 import { AppShell } from "@/components/app/AppShell";
+import WalletConnectOption from "@/components/WalletConnectOption";
 import { Button } from "@/components/ui/button";
 import { SUI_CONFIG, shortAddress } from "@/config/sui";
 import { useSession } from "@/hooks/useSession";
@@ -39,6 +40,9 @@ function ProfilePage() {
         <p className="mt-1 text-xs text-muted-foreground">
           {SUI_CONFIG.networkLabel} · connected Sui wallet
         </p>
+        <div className="mt-4">
+          <WalletConnectOption />
+        </div>
       </section>
 
       <section className="surface-card mt-4 flex items-center justify-between p-5">
