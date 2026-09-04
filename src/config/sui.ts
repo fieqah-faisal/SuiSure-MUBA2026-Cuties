@@ -21,7 +21,7 @@ export const SUI_CONFIG = {
   /** @deprecated JSON-RPC is disabled on public fullnodes. Use grpcUrl. */
   rpcUrl: "https://fullnode.testnet.sui.io:443",
   explorerBaseUrl: "https://suiscan.xyz/testnet",
-  defaultToken: "SUI",
+  defaultToken: "USDC",
   /**
    * Mock mode: no real Sui RPC calls are made and payments are simulated
    * locally. Live mode requires the Sui service adapters to be implemented.
@@ -88,15 +88,16 @@ export const SUI_CONFIG = {
    * 10 September 2026 — past both the 5 September submission and the
    * 6 September pitch. Both are USDC.
    *
-   *   [0] Kopitiam Seri Damai — RM12.00 / 2.553191 USDC — DEMO-KOPI-01
-   *   [1] Campus Cafe         — RM8.00  / 1.702128 USDC — DEMO-CAFE-01
+   *   [0] Kopitiam Seri Damai — RM12.00 / 2.553191 USDC — KOPI-004
+   *   [1] Campus Cafe         — RM7.50  / 1.595745 USDC — CAFE-002
    *
-   * Paying one marks it paid permanently. Create replacements with
-   * create_payment_intent<T> rather than expecting to reuse these.
+   * Paying one marks it paid permanently, and `npm run verify:chain` then warns
+   * and loses its end-to-end simulation. Repoint these at two unspent requests
+   * from docs/DEMO_INTENTS.md when that happens — there are 60 to choose from.
    */
   demoIntentIds: [
-    "0x204dc2dfc0a8eabb9d7730a7e89c5d979fc686991d6579b06d6bf03eb0c57fa7",
-    "0x005ecc8f3445bdbd84830a1701b681c126aa41ae8325d8946350e3746572772e",
+    "0x9ce02e50b282d6bf8e852cb311557e7a1f23f5821a18293c0b7f6e2c82f6aa0a",
+    "0x9446fceadd08c806dea046b5173070a80468d5b4fc6c42cab322d8f10a039d0c",
   ] as string[],
   /**
    * A completed end-to-end payment on testnet, proving the whole flow:
@@ -108,11 +109,13 @@ export const SUI_CONFIG = {
    * Shared MerchantCredential object IDs for the demo merchants, in order:
    *   [0] Kopitiam Seri Damai — Food & Beverage
    *   [1] Campus Cafe         — Food & Beverage
+   *   [2] Olive's Restaurant  — Food & Beverage
    * Steps 3 and 6.
    */
   merchantCredentialIds: [
     "0x73ffe36c370cd0e768e85f59e3c53eba557a3ccc123992d8062f2cbcc063d68f",
     "0xe0b13c411e139c254e8752f2bd4084d20f2767a31cca3cdeff47ad2175d234b3",
+    "0x6cabaa253d1993b632540045c8701971a0902eaa965735e4aec11ccf5791b53d",
   ] as string[],
 } as const;
 
