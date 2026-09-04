@@ -54,7 +54,11 @@ export default function GoogleZkLoginOption() {
         disabled={!ENOKI_CONFIG.configured || preparing || busy}
         onClick={() => void signIn()}
       >
-        {busy ? "Signing in with Google…" : preparing ? "Preparing Google sign-in…" : "Continue with Google"}
+        {busy
+          ? "Signing in with Google…"
+          : preparing
+            ? "Preparing Google sign-in…"
+            : "Continue with Google"}
       </Button>
       {!ENOKI_CONFIG.configured ? (
         <p className="mt-2 text-xs text-destructive">
