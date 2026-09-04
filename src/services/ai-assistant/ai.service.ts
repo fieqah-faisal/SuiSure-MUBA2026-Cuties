@@ -47,16 +47,16 @@ export const aiAssistantService = {
         ? "SuiSure's current Testnet payment requests are denominated in MYR and settle in Testnet USDC. Enter the amount in RM."
         : merchant
           ? `You want to pay ${merchant.name}${amountLabel ? ` ${amountLabel}` : ""}. The merchant was matched against live Sui Testnet credentials. Scan or upload the merchant's on-chain payment request to verify its canonical amount — I cannot pay on your behalf.`
-        : candidates.length > 1
-          ? "I found several verified merchants that match. Please choose one."
-          : "I could not match a verified merchant from that message.",
+          : candidates.length > 1
+            ? "I found several verified merchants that match. Please choose one."
+            : "I could not match a verified merchant from that message.",
       ...(missing.length
         ? {
             clarificationQuestion: unsupportedSuiAmount
               ? "How much would you like to pay in MYR?"
               : !merchant
-              ? "Which verified merchant would you like to pay?"
-              : "How much would you like to pay?",
+                ? "Which verified merchant would you like to pay?"
+                : "How much would you like to pay?",
           }
         : {}),
     };

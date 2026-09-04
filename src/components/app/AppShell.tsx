@@ -87,7 +87,7 @@ export function AppShell({
           This account does not hold a merchant credential on Sui Testnet.
         </p>
         <Link to="/merchant/apply" className="text-sm font-semibold text-primary">
-          Apply to become a verified merchant
+          View merchant registration
         </Link>
       </div>
     );

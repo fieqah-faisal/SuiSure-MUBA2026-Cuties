@@ -82,10 +82,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "SuiSure - MUBA 2026" },
-      { name: "description", content: "AI-assisted Web3 payments on Sui. Understand, verify, and pay safely with SuiSure." },
+      {
+        name: "description",
+        content:
+          "AI-assisted Web3 payments on Sui. Understand, verify, and pay safely with SuiSure.",
+      },
       { name: "author", content: "Cuties" },
       { property: "og:title", content: "SuiSure - MUBA 2026" },
-      { property: "og:description", content: "AI-assisted Web3 payments on Sui. Understand, verify, and pay safely." },
+      {
+        property: "og:description",
+        content: "AI-assisted Web3 payments on Sui. Understand, verify, and pay safely.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@SuiSure" },
@@ -103,7 +110,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { rel: "icon", href: "/favicon.png", type: "image/png" },
     ],
-
   }),
   shellComponent: RootShell,
   component: RootComponent,
@@ -129,13 +135,14 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   return (
-      <QueryClientProvider client={queryClient}>
-        <DAppKitProvider dAppKit={dAppKit}>
-          <SessionProvider>
-            <Outlet />
-            <Toaster />
-          </SessionProvider>
-        </DAppKitProvider>
-      </QueryClientProvider>
+    <QueryClientProvider client={queryClient}>
+      <DAppKitProvider dAppKit={dAppKit}>
+        <SessionProvider>
+          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+          <Outlet />
+          <Toaster />
+        </SessionProvider>
+      </DAppKitProvider>
+    </QueryClientProvider>
   );
 }

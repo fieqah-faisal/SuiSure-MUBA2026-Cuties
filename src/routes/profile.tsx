@@ -12,7 +12,8 @@ export const Route = createFileRoute("/profile")({
       { title: "Your profile | SuiSure" },
       {
         name: "description",
-        content: "Manage your SuiSure account, Sui Testnet address, merchant status and local data.",
+        content:
+          "Manage your SuiSure account, Sui Testnet address, merchant status and local data.",
       },
       { property: "og:title", content: "Your profile | SuiSure" },
       { property: "og:description", content: "Account, network and merchant settings." },
@@ -31,9 +32,7 @@ function ProfilePage() {
 
       <section className="surface-card mt-4 p-5">
         <p className="text-sm font-semibold">{account?.displayName}</p>
-        {account?.email ? (
-          <p className="text-xs text-muted-foreground">{account.email}</p>
-        ) : null}
+        {account?.email ? <p className="text-xs text-muted-foreground">{account.email}</p> : null}
         <p className="mt-3 font-mono text-xs text-muted-foreground">
           {account ? shortAddress(account.address, 10, 8) : ""}
         </p>

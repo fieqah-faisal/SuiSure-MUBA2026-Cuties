@@ -124,8 +124,10 @@ function CustomerDashboard() {
               <Store className="h-5 w-5" />
             </span>
             <div>
-              <p className="text-sm font-semibold">Apply as Merchant</p>
-              <p className="text-xs text-muted-foreground">Accept SuiSure payments at your shop.</p>
+              <p className="text-sm font-semibold">Merchant registration</p>
+              <p className="text-xs text-muted-foreground">
+                Get an administrator-issued Testnet credential.
+              </p>
             </div>
           </div>
           <ChevronRight className="h-4 w-4 text-muted-foreground" />

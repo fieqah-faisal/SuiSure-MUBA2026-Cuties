@@ -58,7 +58,9 @@ export function OnboardingDialog() {
             <span
               key={s.title}
               className={
-                i === step ? "h-1.5 w-6 rounded-full bg-primary" : "h-1.5 w-1.5 rounded-full bg-muted"
+                i === step
+                  ? "h-1.5 w-6 rounded-full bg-primary"
+                  : "h-1.5 w-1.5 rounded-full bg-muted"
               }
             />
           ))}

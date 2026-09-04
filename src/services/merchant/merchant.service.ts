@@ -6,16 +6,6 @@ import {
   toMerchantCredential,
 } from "@/services/sui/merchants";
 import type { MerchantCredential, VerifiedMerchant } from "@/types/domain";
-export interface MerchantApplication {
-  businessName: string;
-  category: string;
-  registrationNumber: string;
-  contactEmail: string;
-  receivingAddress: string;
-  consent: boolean;
-}
-export type ApplicationStatus =
-  "not-submitted" | "submitted" | "under-review" | "approved" | "rejected";
 export const merchantService = {
   async getMerchantCredential(address: string): Promise<MerchantCredential | null> {
     if (!address) return null;
@@ -41,14 +31,6 @@ export const merchantService = {
   async getMerchant(objectId: string): Promise<VerifiedMerchant | null> {
     return (
       (await listOnChainMerchants()).find((merchant) => merchant.objectId === objectId) ?? null
-    );
-  },
-  async submitApplication(
-    application: MerchantApplication,
-  ): Promise<{ status: ApplicationStatus; reference: string }> {
-    if (!application.consent) throw new Error("Consent is required.");
-    throw new Error(
-      "Merchant application submission is not connected yet. An administrator must issue the on-chain credential.",
     );
   },
 };

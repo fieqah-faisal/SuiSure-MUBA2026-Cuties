@@ -77,7 +77,11 @@ export default function Footer17({
   socialLinks = [
     { label: "LINKEDIN", href: "/coming-soon", icon: "linkedin" },
     { label: "TWITTER", href: "/coming-soon", icon: "twitter" },
-    { label: "GITHUB", href: "https://github.com/fieqah-faisal/SuiSure-MUBA2026-Cuties.git", icon: "github" },
+    {
+      label: "GITHUB",
+      href: "https://github.com/fieqah-faisal/SuiSure-MUBA2026-Cuties.git",
+      icon: "github",
+    },
   ],
   legalText = "© 2026 SuiSure by Cuties - Build at MUBA Blockchain Hackathon 2026 on Sui. All rights reserved.",
   bottomLinks = [

@@ -22,7 +22,6 @@ export interface MerchantCredential {
   receivingAddress: string;
   acceptedToken: string;
   active: boolean;
-  verifiedAt: string;
 }
 
 export interface VerifiedMerchant {

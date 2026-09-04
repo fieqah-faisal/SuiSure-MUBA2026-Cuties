@@ -66,7 +66,6 @@ const carouselItems: GrainCarouselItem[] = [
   },
 ];
 
-
 const sectionVariants: Variants = {
   hidden: {},
   visible: { transition: { staggerChildren: 0.12, delayChildren: 0.1 } },
@@ -183,7 +182,6 @@ function Landing() {
           </motion.div>
         </section>
 
-
         <main className="relative z-10 mx-auto max-w-5xl px-5 pb-20">
           <section id="how-it-works" className="scroll-mt-24 py-16 sm:py-20">
             <h2 className="text-center text-3xl font-bold uppercase tracking-tight text-foreground sm:text-4xl">
@@ -200,7 +198,6 @@ function Landing() {
               autoplayInterval={5000}
             />
           </section>
-
 
           <section id="steps" className="scroll-mt-24 py-16 sm:py-20">
             <h2 className="text-center text-3xl font-bold uppercase tracking-tight text-foreground sm:text-4xl">
@@ -229,7 +226,9 @@ function Landing() {
                     {index + 1}
                   </span>
                   <div>
-                    <p className="text-xl font-semibold text-foreground sm:text-2xl">{item.title}</p>
+                    <p className="text-xl font-semibold text-foreground sm:text-2xl">
+                      {item.title}
+                    </p>
                     <p className="mt-1 text-base text-muted-foreground sm:text-lg">
                       {item.description}
                     </p>
@@ -238,7 +237,6 @@ function Landing() {
               )}
             />
           </section>
-
         </main>
       </div>
 
@@ -266,7 +264,11 @@ function Landing() {
         socialLinks={[
           { label: "LINKEDIN", href: "/coming-soon", icon: "linkedin" },
           { label: "TWITTER", href: "/coming-soon", icon: "twitter" },
-          { label: "GITHUB", href: "https://github.com/fieqah-faisal/SuiSure-MUBA2026-Cuties.git", icon: "github" },
+          {
+            label: "GITHUB",
+            href: "https://github.com/fieqah-faisal/SuiSure-MUBA2026-Cuties.git",
+            icon: "github",
+          },
         ]}
         legalText="© 2026 SuiSure by Cuties - Build at MUBA Blockchain Hackathon 2026 on Sui. All rights reserved."
         bottomLinks={[
@@ -277,4 +279,3 @@ function Landing() {
     </div>
   );
 }
-

@@ -112,14 +112,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
     void refreshBalance();
     let cancelled = false;
-    void merchantService
-      .getMerchantCredential(account.address)
-      .then((value) => {
-        if (!cancelled) {
-          setCredential(value);
-          if (!value) setViewMode("customer");
-        }
-      });
+    void merchantService.getMerchantCredential(account.address).then((value) => {
+      if (!cancelled) {
+        setCredential(value);
+        if (!value) setViewMode("customer");
+      }
+    });
     return () => {
       cancelled = true;
     };
