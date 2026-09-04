@@ -4,21 +4,20 @@
  *   npm run verify:chain
  *   npm run verify:chain -- 0x<some-other-payer-address>
  *
- * Reads everything recorded in src/config/sui.ts back off Sui Testnet and
- * confirms it is really there and really in the state we claim. The last check
- * builds a real payment and simulates it, which exercises the entire path --
- * config, gRPC, both shared objects, the split, and the Move call -- without
- * spending anything or consuming a demo request.
+ * Reads everything recorded in src/config/sui.ts and src/config/demo-intents.ts
+ * back off Sui Testnet and confirms it is really there and really in the state
+ * we claim. Every demo request is checked, so the answer to "how many do we have
+ * left" is a fact rather than a guess. The last check builds a real payment and
+ * simulates it, which exercises the entire path -- config, gRPC, both shared
+ * objects, the split, and the Move call -- without spending anything or
+ * consuming a request.
  *
  * Exits non-zero if any critical check fails, so it can gate a deploy.
  */
+import { DEMO_MERCHANTS } from "../src/config/demo-intents";
 import { SUI_CONFIG } from "../src/config/sui";
 import { suiClient, fetchObjectJson } from "../src/services/sui/client";
-import {
-  getOnChainPaymentIntent,
-  resolvePaymentIntent,
-  verifyAgainstChain,
-} from "../src/services/sui/intents";
+import { getOnChainPaymentIntent } from "../src/services/sui/intents";
 import { listOnChainMerchants } from "../src/services/sui/merchants";
 import { buildPaymentTransaction, listPayerCoins, getPayerBalance } from "../src/services/sui/pay";
 
@@ -107,29 +106,54 @@ const main = async () => {
   }
 
   // -------------------------------------------------------------- intents
-  heading("Standing payment requests");
+  //
+  // Every request in DEMO_MERCHANTS is checked, in one batched read, because the
+  // question before a demo is "how many do I have left" rather than "is this one
+  // fine". getObjects chunks internally, so 63 ids cost two round trips.
+  heading("Demo payment requests");
   const usable: string[] = [];
-  for (const intentId of SUI_CONFIG.demoIntentIds) {
-    try {
-      const checks = await verifyAgainstChain(intentId);
-      const label = intentId.slice(0, 10) + "…";
-      if (checks.notAlreadyPaid && checks.notExpired) {
-        // Reading credential_id first, then resolving against it, exercises the
-        // same two-step the UI does: never trust one object for both.
-        const raw = await getOnChainPaymentIntent(intentId);
-        const intent = await resolvePaymentIntent(intentId, raw!.credential_id);
-        pass(
-          `${label} payable`,
-          `${intent.merchantName} · RM${intent.amountMyr} · expires ${intent.expiresAt.slice(0, 10)}`,
-        );
-        usable.push(intentId);
-      } else if (!checks.notAlreadyPaid) {
-        warn(`${label} already paid`, "expected if someone demoed it; create a replacement");
-      } else {
-        warn(`${label} expired`, "create a replacement with create_payment_intent<T>");
+  for (const merchant of DEMO_MERCHANTS) {
+    const ids = merchant.intents.map((intent) => intent.objectId);
+    const response = await suiClient.core.getObjects({ objectIds: ids, include: { json: true } });
+
+    let payable = 0;
+    let paid = 0;
+    let lapsed = 0;
+    const wrongState: string[] = [];
+
+    response.objects.forEach((object, index) => {
+      const declared = merchant.intents[index]!;
+      if (!object || object instanceof Error || !object.json) {
+        wrongState.push(`${declared.reference} missing on chain`);
+        return;
       }
-    } catch (error) {
-      fail(intentId.slice(0, 10) + "…", (error as Error).message);
+      const chain = object.json as { paid: boolean; expiry_ms: string };
+      const isExpired = Date.now() >= Number(chain.expiry_ms);
+
+      if (chain.paid) paid += 1;
+      else if (isExpired) lapsed += 1;
+      else {
+        payable += 1;
+        usable.push(declared.objectId);
+      }
+
+      // The fixtures marked "expired" are meant to stay expired, and the ones
+      // marked payable are meant to be spendable. Either drifting is worth
+      // knowing before it surprises someone on stage.
+      if (declared.status === "expired" && !isExpired && !chain.paid) {
+        wrongState.push(`${declared.reference} is listed expired but is still live`);
+      }
+    });
+
+    const summary = `${payable} payable, ${paid} paid, ${lapsed} expired of ${ids.length}`;
+    if (wrongState.length > 0) {
+      fail(merchant.merchantName, `${summary} — ${wrongState.join("; ")}`);
+    } else if (payable === 0) {
+      fail(merchant.merchantName, `${summary} — nothing left to demo with`);
+    } else if (payable < 3) {
+      warn(merchant.merchantName, `${summary} — running low`);
+    } else {
+      pass(merchant.merchantName, summary);
     }
   }
 
