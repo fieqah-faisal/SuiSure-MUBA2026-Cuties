@@ -9,9 +9,9 @@ import GrainCarousel, { type GrainCarouselItem } from "@/components/lightswind/g
 import ScrollList from "@/components/lightswind/scroll-list";
 import Footer17 from "@/components/ui/footer";
 
-import qrAsset from "@/assets/image-5.png.asset.json";
-import payAsset from "@/assets/image-6.png.asset.json";
-import controlAsset from "@/assets/image-7.png.asset.json";
+import qrAsset from "@/assets/image-5.png";
+import payAsset from "@/assets/image-6.png";
+import controlAsset from "@/assets/image-7.png";
 
 import { SUI_CONFIG } from "@/config/sui";
 import { Button } from "@/components/ui/button";
@@ -42,8 +42,8 @@ const carouselItems: GrainCarouselItem[] = [
     badge: "Start",
     title: "Pay by QR or plain language",
     subtitle: "Scan, upload a screenshot, or simply tell SuiSure what you want to pay.",
-    imageA: qrAsset.url,
-    imageB: payAsset.url,
+    imageA: qrAsset,
+    imageB: payAsset,
     accentColor: "#7CE0FF",
   },
   {
@@ -51,8 +51,8 @@ const carouselItems: GrainCarouselItem[] = [
     badge: "Verify",
     title: "Verify merchants first",
     subtitle: "Every merchant and payment request is checked against Sui before you pay.",
-    imageA: payAsset.url,
-    imageB: controlAsset.url,
+    imageA: payAsset,
+    imageB: controlAsset,
     accentColor: "#7CE0FF",
   },
   {
@@ -60,8 +60,8 @@ const carouselItems: GrainCarouselItem[] = [
     badge: "Control",
     title: "You stay in control",
     subtitle: "The assistant explains the payment. Only your signature can send it.",
-    imageA: controlAsset.url,
-    imageB: qrAsset.url,
+    imageA: controlAsset,
+    imageB: qrAsset,
     accentColor: "#7CE0FF",
   },
 ];
