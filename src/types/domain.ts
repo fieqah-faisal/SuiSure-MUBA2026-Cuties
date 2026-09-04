@@ -10,7 +10,7 @@ export type SuiNetwork = "testnet" | "mainnet" | "devnet" | "localnet";
 
 export interface SuiAccount {
   address: string;
-  provider: "google" | "wallet" | "mock";
+  provider: "google" | "wallet";
   displayName: string;
   email?: string | undefined;
 }
@@ -52,13 +52,6 @@ export interface PaymentIntent {
   createdAt: string;
   expiresAt: string;
   status: PaymentStatus;
-}
-
-export interface ConversionQuote {
-  rateMyrPerToken: number;
-  tokenType: string;
-  quotedAt: string;
-  expiresAt: string;
 }
 
 export interface VerificationCheck {

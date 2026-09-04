@@ -236,7 +236,7 @@ function AiTab() {
   return (
     <div className="surface-card p-4">
       <p className="text-sm text-muted-foreground">
-        Describe the payment, for example “Pay RM12 to Kopitiam Delight”. The assistant only
+        Describe the payment, for example “Pay RM12 to Kopitiam Seri Damai”. The assistant only
         prepares a draft — it can never sign or send a payment.
       </p>
       <Textarea
@@ -244,7 +244,7 @@ function AiTab() {
         rows={3}
         value={message}
         onChange={(e) => setMessage(e.target.value)}
-        placeholder="Pay RM12 to Kopitiam Delight"
+        placeholder="Pay RM12 to Kopitiam Seri Damai"
       />
       <Button
         className="mt-3 w-full"

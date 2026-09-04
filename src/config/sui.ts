@@ -21,7 +21,7 @@ export const SUI_CONFIG = {
   /** @deprecated JSON-RPC is disabled on public fullnodes. Use grpcUrl. */
   rpcUrl: "https://fullnode.testnet.sui.io:443",
   explorerBaseUrl: "https://suiscan.xyz/testnet",
-  defaultToken: "SUI",
+  defaultToken: "USDC",
   /**
    * Mock mode: no real Sui RPC calls are made and payments are simulated
    * locally. Live mode requires the Sui service adapters to be implemented.

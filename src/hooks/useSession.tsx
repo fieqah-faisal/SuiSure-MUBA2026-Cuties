@@ -9,7 +9,6 @@ import {
   type ReactNode,
 } from "react";
 import { SUI_CONFIG } from "@/config/sui";
-import { zkLoginService, type AuthProvider } from "@/services/auth/zkLogin.service";
 import { merchantService } from "@/services/merchant/merchant.service";
 import { paymentService } from "@/services/payments/payment.service";
 import { persistence } from "@/services/storage/persistence.service";
@@ -23,13 +22,10 @@ interface SessionValue {
   isMerchant: boolean;
   viewMode: ViewMode;
   setViewMode: (mode: ViewMode) => void;
-  devMerchantOverride: boolean;
-  setDevMerchantOverride: (value: boolean) => void;
   networkStatus: NetworkStatus;
   balance: number;
   balanceToken: string;
   gasBalance: number;
-  signIn: (provider: AuthProvider) => Promise<void>;
   signInWithWallet: (address: string) => void;
   signOut: () => Promise<void>;
   clearLocalData: () => void;
@@ -46,7 +42,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [account, setAccount] = useState<SuiAccount | null>(null);
   const [credential, setCredential] = useState<MerchantCredential | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("customer");
-  const [devMerchantOverride, setDevOverride] = useState(false);
   const [balance, setBalance] = useState(0);
   const [gasBalance, setGasBalance] = useState(0);
   const [balanceToken, setBalanceToken] = useState<string>(SUI_CONFIG.defaultToken);
@@ -69,7 +64,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       : "online";
 
   useEffect(() => {
-    setDevOverride(persistence.read<boolean>("role-override", false));
     setAccount(persistence.read<SuiAccount | null>("session", null));
     setReady(true);
   }, []);
@@ -117,7 +111,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     void refreshBalance();
     let cancelled = false;
     void merchantService
-      .getMerchantCredential(account.address, devMerchantOverride)
+      .getMerchantCredential(account.address)
       .then((value) => {
         if (!cancelled) {
           setCredential(value);
@@ -127,29 +121,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [account, devMerchantOverride, refreshBalance]);
+  }, [account, refreshBalance]);
 
-  const signIn = useCallback(async (provider: AuthProvider) => {
-    const value = await zkLoginService.signInWithProvider(provider);
-    persistence.write("session", value);
-    setAccount(value);
-  }, []);
   const signOut = useCallback(async () => {
     if (account?.provider === "wallet") await dAppKit.disconnectWallet();
-    await zkLoginService.signOut();
     persistence.remove("session");
     setAccount(null);
     setViewMode("customer");
   }, [account?.provider, dAppKit]);
-  const setDevMerchantOverride = useCallback((value: boolean) => {
-    persistence.write("role-override", value);
-    setDevOverride(value);
-  }, []);
   const clearLocalData = useCallback(() => {
     if (account?.provider === "wallet") void dAppKit.disconnectWallet();
     persistence.clearAll();
     setAccount(null);
-    setDevOverride(false);
     setViewMode("customer");
   }, [account?.provider, dAppKit]);
 
@@ -161,13 +144,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       isMerchant: Boolean(credential),
       viewMode,
       setViewMode,
-      devMerchantOverride,
-      setDevMerchantOverride,
       networkStatus,
       balance,
       balanceToken,
       gasBalance,
-      signIn,
       signInWithWallet,
       signOut,
       clearLocalData,
@@ -178,13 +158,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       account,
       credential,
       viewMode,
-      devMerchantOverride,
-      setDevMerchantOverride,
       networkStatus,
       balance,
       balanceToken,
       gasBalance,
-      signIn,
       signInWithWallet,
       signOut,
       clearLocalData,

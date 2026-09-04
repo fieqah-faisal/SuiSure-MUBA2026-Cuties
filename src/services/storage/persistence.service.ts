@@ -9,7 +9,6 @@ export type PersistenceKey =
   | "payment-draft"
   | "notifications"
   | "session"
-  | "role-override"
   | "recent-merchants"
   | "dismissed"
   | "receipts"

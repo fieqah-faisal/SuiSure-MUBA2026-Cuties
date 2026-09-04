@@ -3,7 +3,6 @@ import { LogOut, ShieldCheck, Trash2 } from "lucide-react";
 
 import { AppShell } from "@/components/app/AppShell";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import { SUI_CONFIG, shortAddress } from "@/config/sui";
 import { useSession } from "@/hooks/useSession";
 
@@ -23,14 +22,7 @@ export const Route = createFileRoute("/profile")({
 });
 
 function ProfilePage() {
-  const {
-    account,
-    isMerchant,
-    devMerchantOverride,
-    setDevMerchantOverride,
-    signOut,
-    clearLocalData,
-  } = useSession();
+  const { account, isMerchant, signOut, clearLocalData } = useSession();
   const navigate = useNavigate();
 
   return (
@@ -46,7 +38,7 @@ function ProfilePage() {
           {account ? shortAddress(account.address, 10, 8) : ""}
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
-          {SUI_CONFIG.networkLabel} · {account?.provider === "wallet" ? "connected wallet" : "signed in with zkLogin"}
+          {SUI_CONFIG.networkLabel} · connected Sui wallet
         </p>
       </section>
 
@@ -64,16 +56,6 @@ function ProfilePage() {
             <Link to="/merchant/apply">Apply</Link>
           </Button>
         )}
-      </section>
-
-      <section className="surface-card mt-4 flex items-center justify-between p-5">
-        <div>
-          <p className="text-sm font-semibold">Developer merchant mode</p>
-          <p className="text-xs text-muted-foreground">
-            Simulate holding a merchant credential while testing.
-          </p>
-        </div>
-        <Switch checked={devMerchantOverride} onCheckedChange={setDevMerchantOverride} />
       </section>
 
       <div className="mt-5 space-y-2">
