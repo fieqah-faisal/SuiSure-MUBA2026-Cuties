@@ -18,7 +18,7 @@ export type PaymentExecutionPhase =
 const readablePaymentError = (error: unknown) => {
   const message = error instanceof Error ? error.message : "The payment could not be completed.";
   if (/incorrect password/i.test(message)) {
-    return "Your wallet reported an incorrect password. Unlock Slush directly, then retry.";
+    return "Slush could not unlock its signing key. Reconnect or restart Slush, then retry; SuiSure never receives your password.";
   }
   if (/rejected|declined|denied|cancelled|canceled/i.test(message)) {
     return "The wallet approval was cancelled. Nothing was sent.";
@@ -60,7 +60,10 @@ export function usePaymentExecution() {
           currentAccount.address,
         );
         setPaymentPhase("awaiting-wallet");
-        const result = await dAppKit.signAndExecuteTransaction({ transaction });
+        const result = await dAppKit.signAndExecuteTransaction({
+          transaction,
+          network: SUI_CONFIG.network,
+        });
         if (result.$kind === "FailedTransaction") {
           throw new Error(
             result.FailedTransaction.status.error?.message ?? "The Sui transaction failed.",
