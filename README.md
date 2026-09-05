@@ -4,7 +4,7 @@
 
 > SuiSure is an AI-assisted merchant payment application that verifies the merchant, amount, token, expiry, and replay status on Sui before a customer confirms payment.
 
-**Tracks:** Track 1 — Payments & Stablecoins · Track 2 — AI × Sui  
+**Tracks:** Track 1 — Payments & Stablecoins & Track 2 — AI × Sui  
 **Network:** Sui Testnet  
 **Live application:** https://suisure--suisure-cuties.asia-southeast1.hosted.app  
 **Demo video:** _Add Devfolio video link_
@@ -65,7 +65,7 @@ The following flow explains how that solution operates:
 
 ### Architecture Diagram
 
-<img width="1272" height="732" alt="SuiSure_Architecture_Diagram drawio" src="https://github.com/user-attachments/assets/4c0d397c-c9d1-4ba5-945e-96a10a96fa9f" />
+<img width="1272" height="732" alt="SuiSure_Architecture_Diagram drawio" src="https://github.com/user-attachments/assets/f79cdb86-6d87-4c95-bbbc-1918d17fe46d" />
 
 
 ### Why Sui is integral
@@ -198,6 +198,7 @@ The Move package contains eight tests, including five expected-failure cases. Th
 
 ---
 
-**License:** Hackathon prototype. No open-source license is granted unless a `LICENSE` file is added.
-
 **Before you pay, SuiSure asks: “U sure or not?”**
+
+_Made in MUBA Blockchain Hackathon 2026_
+_@ Asia Pacific University of Technology and Innovation_
