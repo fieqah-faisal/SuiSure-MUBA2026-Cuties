@@ -91,6 +91,26 @@ Sui is the trust and settlement layer, not an optional database. Shared objects 
 | QR functionality | `qrcode`, ZXing browser scanner |
 | Deployment | Firebase App Hosting |
 
+### AI assistant (Track 2)
+
+The "Ask" tab turns one sentence — "Pay RM12 to Kopitiam" — into the same review screen the QR flow
+uses. Gemini (`gemini-3.5-flash-lite`) only reads the sentence into a merchant name and an amount.
+Everything that matters is then done in code against Sui: the name is resolved to an on-chain
+`MerchantCredential`, the amount is matched against that merchant's open on-chain `PaymentIntent`
+objects, and the hand-off to review is the same two object IDs a QR carries. The model never sees the
+merchant list, never outputs an address, and cannot create or alter a request.
+
+| Path | Role |
+| --- | --- |
+| `POST /api/interpret-payment` | Server route holding the model key; validated JSON in and out |
+| `GET /api/health?probe=chain` | Reports which provider answers and reads the merchants from Sui |
+| `src/services/ai-assistant/` | Schemas, deterministic matching, Gemini provider, on-chain resolution |
+| `docs/AI_ENDPOINT.md` | Endpoint contract, sample responses, environment, deploy checklist |
+| `docs/AI_SAFETY_MODEL.md` | Trust boundaries, ten threat cases, known limits |
+
+Without a `GEMINI_API_KEY` the endpoint still answers using an offline regex fallback and says so in
+the response and in the UI; that path is never described as AI.
+
 ## 5. Smart contracts and Testnet deployment
 
 The `suisure::payments` Move package adds merchant-specific safety checks in front of Sui Payment Kit.
@@ -161,6 +181,8 @@ Validation commands:
 ```bash
 npm run lint
 npm run build
+npm run test:ai            # AI lane unit tests (no network, no key)
+npm run smoke:ai -- <url>  # AI endpoint smoke test against a running deployment
 
 cd move
 sui move build
@@ -177,7 +199,7 @@ The Move package contains eight tests, including five expected-failure cases. Th
 - Merchant credentials are currently administrator-issued.
 - Testnet USDC/MYR display conversion is demo configuration rather than a live foreign-exchange quote.
 - Google is the current zkLogin social provider.
-- The AI layer assists payment understanding but does not authorize payment.
+- The AI layer assists payment understanding but does not authorize payment. It runs on Google Gemini (`gemini-3.5-flash-lite`) via a server-side key; a deployment without the key falls back to a regex reader and labels itself as such.
 
 ### Future integrations
 
