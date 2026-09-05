@@ -4,24 +4,18 @@ import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
 
 import { AppShell } from "@/components/app/AppShell";
+import { AiAssistantTab } from "@/components/payments/AiAssistantTab";
 import { PaymentRobot } from "@/components/payments/PaymentRobot";
 import { FileUploader } from "@/components/ui/file-uploader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs12 } from "@/components/ui/tabs-12";
 import type { Tabs12Service } from "@/components/ui/tabs-12";
-import { Textarea } from "@/components/ui/textarea";
 import { SUI_CONFIG, shortAddress } from "@/config/sui";
 import { useSession } from "@/hooks/useSession";
 import { usePaymentExecution } from "@/hooks/usePaymentExecution";
-import { aiAssistantService } from "@/services/ai-assistant/ai.service";
 import { paymentService } from "@/services/payments/payment.service";
-import type {
-  AiParsedIntent,
-  PaymentIntent,
-  PaymentIntentQRPayload,
-  RiskAssessment,
-} from "@/types/domain";
+import type { PaymentIntent, PaymentIntentQRPayload, RiskAssessment } from "@/types/domain";
 
 const searchSchema = z.object({
   tab: z.enum(["scan", "upload", "ai"]).default("scan"),
@@ -229,51 +223,10 @@ function UploadTab() {
 }
 
 function AiTab() {
-  const [message, setMessage] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [parsed, setParsed] = useState<AiParsedIntent | null>(null);
-
-  return (
-    <div className="surface-card p-4">
-      <p className="text-sm text-muted-foreground">
-        Describe the payment, for example “Pay RM12 to Kopitiam Seri Damai”. The assistant only
-        prepares a draft — it can never sign or send a payment.
-      </p>
-      <Textarea
-        className="mt-3"
-        rows={3}
-        value={message}
-        onChange={(e) => setMessage(e.target.value)}
-        placeholder="Pay RM12 to Kopitiam Seri Damai"
-      />
-      <Button
-        className="mt-3 w-full"
-        disabled={!message.trim() || busy}
-        onClick={() => {
-          setBusy(true);
-          void aiAssistantService
-            .interpret(message)
-            .then(setParsed)
-            .finally(() => setBusy(false));
-        }}
-      >
-        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Interpret request"}
-      </Button>
-
-      {parsed ? (
-        <div className="mt-4 rounded-2xl bg-muted/50 p-4">
-          <p className="text-sm">{parsed.explanation}</p>
-          {parsed.clarificationQuestion ? (
-            <p className="mt-2 text-sm font-medium text-warning">{parsed.clarificationQuestion}</p>
-          ) : null}
-          <p className="mt-2 text-xs text-muted-foreground">
-            Confidence {(parsed.confidence * 100).toFixed(0)}% · You must review and confirm every
-            payment.
-          </p>
-        </div>
-      ) : null}
-    </div>
-  );
+  const openIntent = useOpenIntent();
+  // The assistant lands on the same ReviewStage the QR flow uses, carrying the
+  // same two IDs a QR carries. See src/components/payments/AiAssistantTab.tsx.
+  return <AiAssistantTab onOpenIntent={openIntent} />;
 }
 
 function ReviewStage({ payload }: { payload: PaymentIntentQRPayload }) {
