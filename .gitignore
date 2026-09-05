@@ -33,3 +33,8 @@ dist-ssr
 
 # Move build output
 move/build/
+
+# Secrets: the example file is committed, real values never are
+.env
+.env.*
+!.env.example

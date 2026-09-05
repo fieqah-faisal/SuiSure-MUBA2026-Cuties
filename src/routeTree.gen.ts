@@ -18,6 +18,8 @@ import { Route as MerchantRouteImport } from './routes/merchant'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as PayRouteImport } from './routes/pay'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as ApiHealthRouteImport } from './routes/api.health'
+import { Route as ApiInterpretPaymentRouteImport } from './routes/api.interpret-payment'
 import { Route as MerchantIndexRouteImport } from './routes/merchant.index'
 import { Route as MerchantApplyRouteImport } from './routes/merchant.apply'
 import { Route as ReceiptReceiptIdRouteImport } from './routes/receipt.$receiptId'
@@ -67,6 +69,16 @@ const ProfileRoute = ProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiHealthRoute = ApiHealthRouteImport.update({
+  id: '/api/health',
+  path: '/api/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiInterpretPaymentRoute = ApiInterpretPaymentRouteImport.update({
+  id: '/api/interpret-payment',
+  path: '/api/interpret-payment',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MerchantIndexRoute = MerchantIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -93,6 +105,8 @@ export interface FileRoutesByFullPath {
   '/notifications': typeof NotificationsRoute
   '/pay': typeof PayRoute
   '/profile': typeof ProfileRoute
+  '/api/health': typeof ApiHealthRoute
+  '/api/interpret-payment': typeof ApiInterpretPaymentRoute
   '/merchant/apply': typeof MerchantApplyRoute
   '/receipt/$receiptId': typeof ReceiptReceiptIdRoute
   '/merchant/': typeof MerchantIndexRoute
@@ -106,6 +120,8 @@ export interface FileRoutesByTo {
   '/notifications': typeof NotificationsRoute
   '/pay': typeof PayRoute
   '/profile': typeof ProfileRoute
+  '/api/health': typeof ApiHealthRoute
+  '/api/interpret-payment': typeof ApiInterpretPaymentRoute
   '/merchant/apply': typeof MerchantApplyRoute
   '/receipt/$receiptId': typeof ReceiptReceiptIdRoute
   '/merchant': typeof MerchantIndexRoute
@@ -121,6 +137,8 @@ export interface FileRoutesById {
   '/notifications': typeof NotificationsRoute
   '/pay': typeof PayRoute
   '/profile': typeof ProfileRoute
+  '/api/health': typeof ApiHealthRoute
+  '/api/interpret-payment': typeof ApiInterpretPaymentRoute
   '/merchant/apply': typeof MerchantApplyRoute
   '/receipt/$receiptId': typeof ReceiptReceiptIdRoute
   '/merchant/': typeof MerchantIndexRoute
@@ -137,6 +155,8 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/pay'
     | '/profile'
+    | '/api/health'
+    | '/api/interpret-payment'
     | '/merchant/apply'
     | '/receipt/$receiptId'
     | '/merchant/'
@@ -150,6 +170,8 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/pay'
     | '/profile'
+    | '/api/health'
+    | '/api/interpret-payment'
     | '/merchant/apply'
     | '/receipt/$receiptId'
     | '/merchant'
@@ -164,6 +186,8 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/pay'
     | '/profile'
+    | '/api/health'
+    | '/api/interpret-payment'
     | '/merchant/apply'
     | '/receipt/$receiptId'
     | '/merchant/'
@@ -179,6 +203,8 @@ export interface RootRouteChildren {
   NotificationsRoute: typeof NotificationsRoute
   PayRoute: typeof PayRoute
   ProfileRoute: typeof ProfileRoute
+  ApiHealthRoute: typeof ApiHealthRoute
+  ApiInterpretPaymentRoute: typeof ApiInterpretPaymentRoute
   ReceiptReceiptIdRoute: typeof ReceiptReceiptIdRoute
 }
 
@@ -247,6 +273,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/health': {
+      id: '/api/health'
+      path: '/api/health'
+      fullPath: '/api/health'
+      preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/interpret-payment': {
+      id: '/api/interpret-payment'
+      path: '/api/interpret-payment'
+      fullPath: '/api/interpret-payment'
+      preLoaderRoute: typeof ApiInterpretPaymentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/merchant/': {
       id: '/merchant/'
       path: '/'
@@ -295,6 +335,8 @@ const rootRouteChildren: RootRouteChildren = {
   NotificationsRoute: NotificationsRoute,
   PayRoute: PayRoute,
   ProfileRoute: ProfileRoute,
+  ApiHealthRoute: ApiHealthRoute,
+  ApiInterpretPaymentRoute: ApiInterpretPaymentRoute,
   ReceiptReceiptIdRoute: ReceiptReceiptIdRoute,
 }
 export const routeTree = rootRouteImport
