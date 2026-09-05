@@ -7,7 +7,8 @@
 **Tracks:** Track 1 — Payments & Stablecoins & Track 2 — AI × Sui  
 **Network:** Sui Testnet  
 **Live application:** https://suisure--suisure-cuties.asia-southeast1.hosted.app  
-**Demo video:** https://devfolio.co/projects/suisure-7fe1
+**Demo video:** https://youtu.be/9g0XHEr59Bs?si=2QL1eJ_0lpoAwezh \
+**DevFolio Project:** https://devfolio.co/projects/suisure-7fe1
 
 ---
 
