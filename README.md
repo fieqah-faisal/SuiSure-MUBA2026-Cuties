@@ -63,66 +63,10 @@ The following flow explains how that solution operates:
 
 ## 4. Architecture, Sui integration, and track alignment
 
-### Architecture flow for the Draw.io diagram
+### Architecture Diagram
 
-Include the following components and connections:
+<img width="1272" height="732" alt="SuiSure_Architecture_Diagram drawio" src="https://github.com/user-attachments/assets/4c0d397c-c9d1-4ba5-945e-96a10a96fa9f" />
 
-1. **Customer**
-   - signs in through Google zkLogin or a Sui wallet;
-   - scans/uploads a QR or enters a plain-language request.
-
-2. **SuiSure frontend**
-   - hosted with Firebase App Hosting;
-   - requests AI interpretation when applicable;
-   - reads Sui Testnet through the Sui gRPC client;
-   - displays canonical payment details for user confirmation.
-
-3. **AI service**
-   - interprets the customer's sentence and identifies missing information;
-   - resolves suggestions only against verified merchants;
-   - returns structured assistance to the frontend;
-   - has no signing or transaction-execution capability.
-
-4. **Sui shared objects**
-   - `MerchantCredential`;
-   - `PaymentIntent`;
-   - Sui Payment Kit `PaymentRegistry`.
-
-5. **Transaction execution**
-   - the active wallet or zkLogin account signs;
-   - `suisure::payments::pay_payment_intent<T>` performs the security checks;
-   - Sui Payment Kit transfers Testnet USDC directly to the merchant payout address.
-
-6. **Transaction result**
-   - `PaymentCompleted` event;
-   - customer-owned `SuiSureReceipt`;
-   - sender and recipient activity;
-   - merchant notification;
-   - public Sui explorer transaction.
-
-Recommended main diagram flow:
-
-```text
-Customer
-  → Google zkLogin / Sui wallet
-  → QR, upload, or AI-assisted input
-  → SuiSure frontend
-  → Sui gRPC verification
-  → MerchantCredential + PaymentIntent + PaymentRegistry
-  → User-signed transaction
-  → suisure::payments security checks
-  → Sui Payment Kit
-  → Testnet USDC sent directly to merchant
-  → Receipt + event + account-scoped activity
-```
-
-Show these security notes beside the relevant components:
-
-- **QR:** object IDs only; no payout address
-- **AI:** interprets and explains; cannot sign
-- **Move contract:** payout comes from the merchant credential
-- **Payment Kit registry:** `registry_managed_funds = false`
-- **Activity:** visible only to the sender or recipient
 
 ### Why Sui is integral
 
