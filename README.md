@@ -2,180 +2,217 @@
 
 ### **SuiSure: U SURE OR NOT???**
 
-> AI-assisted, on-chain merchant payments that verify the merchant, amount, token, expiry, and replay status before money moves.
+> SuiSure is an AI-assisted merchant payment application that verifies the merchant, amount, token, expiry, and replay status on Sui before a customer confirms payment.
 
 **Tracks:** Track 1 — Payments & Stablecoins · Track 2 — AI × Sui  
 **Network:** Sui Testnet  
-**Live app:** https://suisure--suisure-cuties.asia-southeast1.hosted.app  
-**Demo video:** _Add submission link_
+**Live application:** https://suisure--suisure-cuties.asia-southeast1.hosted.app  
+**Demo video:** _Add Devfolio video link_
 
 ---
 
-## 1. Problem and proposed solution
+## 1. Project overview
 
-Crypto merchant checkout still asks ordinary users to trust opaque wallet addresses and client-supplied QR data. A replaced QR can redirect an irreversible payment, a reused request can be replayed, and an amount-only check can accept the wrong token.
+SuiSure makes crypto merchant payments feel like a familiar QR checkout while adding verification that a normal wallet-address QR cannot provide.
 
-SuiSure replaces “scan and hope” with “scan, verify, then pay”:
+A merchant uses an on-chain credential and creates an on-chain payment request. The customer scans the QR, uploads it, or describes the intended payment in plain language. Before anything can be paid, SuiSure reads the canonical merchant and request data from Sui and presents it for confirmation.
 
-- A merchant receives an on-chain `MerchantCredential`.
-- Each checkout is represented by an on-chain `PaymentIntent`.
-- The QR contains object identifiers—not a destination wallet address.
-- SuiSure reads the canonical merchant, amount, coin type, expiry, and payment status from Sui.
-- The customer reviews and confirms the transaction using Google zkLogin or a Sui wallet.
-- Funds settle directly from customer to merchant in Testnet USDC, and the customer receives an on-chain receipt.
+The result is a non-custodial payment: Testnet USDC moves directly from the customer to the merchant, and the customer receives an on-chain receipt.
 
 SuiSure borrows the familiar experience of merchant QR payments; it does **not** integrate with or replace DuitNow.
 
-## 2. How SuiSure works
+## 2. Problem statement
+
+Crypto merchant checkout often asks customers to trust a wallet address or QR payload they cannot meaningfully verify. Because blockchain settlement is irreversible, several failures can cause permanent loss:
+
+- a merchant QR can be replaced with an attacker's QR;
+- a long hexadecimal recipient address is difficult for users to verify;
+- a previously paid request can be replayed;
+- an expired request may still appear valid;
+- an amount-only payment check may accept the wrong token;
+- client or AI-provided data may disagree with the actual on-chain request.
+
+The important moment is therefore **before signing**. The customer needs a clear way to confirm who will receive the payment, what is being paid, which token is required, and whether the request is still valid.
+
+## 3. Proposed solution and how it works
+
+The proposed solution is the overall idea: **bind merchant checkout details to verifiable Sui objects instead of trusting the QR itself**.
+
+The following flow explains how that solution operates:
 
 1. **Register merchant** — an administrator issues a shared `MerchantCredential` containing the merchant name, category, payout address, and active status.
-2. **Create request** — a payment intent fixes the merchant credential, amount, display amount in MYR, token type, description, order reference, nonce, and expiry.
-3. **Scan or ask** — the customer scans/uploads a SuiSure QR or describes the intended payment in plain language.
-4. **Verify on Sui** — the app loads the objects from Testnet and rejects mismatched, inactive, expired, paid, or wrong-token requests.
-5. **Human confirmation** — AI may interpret or explain; it cannot sign or submit.
-6. **Settle and prove** — Sui Payment Kit moves the coin wallet-to-wallet, the intent is marked paid, an event is emitted, and a `SuiSureReceipt` is transferred to the payer.
+2. **Create payment request** — a `PaymentIntent` records the merchant credential, USDC amount, MYR display amount, description, order reference, coin type, nonce, and expiry.
+3. **Generate QR** — the QR carries the payment-intent ID and merchant-credential ID. It never carries a destination address.
+4. **Scan, upload, or ask** — the customer opens the request through QR scanning, image upload, or plain-language assistance.
+5. **Verify on Sui** — SuiSure reads the shared objects and checks the merchant, amount, token, expiry, and payment status.
+6. **Review and confirm** — the customer confirms with Google zkLogin or a compatible Sui wallet.
+7. **Settle and prove** — Sui Payment Kit transfers Testnet USDC directly to the registered merchant. The payer receives a `SuiSureReceipt`, and a `PaymentCompleted` event is emitted.
 
 ### Key features
 
-- Google zkLogin and Sui Wallet Standard sign-in
-- QR scan, image upload, and plain-language payment entry
-- Verified merchant and canonical on-chain payment review
-- Direct Testnet USDC settlement with no SuiSure custody
-- Replay, expiry, merchant-substitution, and wrong-coin protection
-- Customer receipts plus sender/recipient-scoped activity and notifications
-- Merchant payment-request dashboard with QR generation and status refresh
-- Explorer links for independently verifiable transactions
+- Google zkLogin and Sui Wallet Standard authentication
+- QR scanning, QR image upload, and plain-language payment assistance
+- On-chain merchant and payment-request verification
+- Direct wallet-to-wallet Testnet USDC settlement
+- Expiry, replay, merchant-substitution, and wrong-token protection
+- Customer receipts and Sui explorer links
+- Account-scoped payment activity and notifications
+- Merchant payment-request dashboard with QR generation and status updates
 
-## 3. Why Sui is integral
+> **AI safety boundary:** AI may interpret and explain a payment, but it cannot provide the trusted payout address, override on-chain values, sign, approve, or submit a transaction. Sui remains the source of truth, and the user makes the final payment decision.
 
-Sui is the trust layer, not a database added after the fact. Shared objects let customers read merchant credentials and payment requests created by another party. Move enforces the payment rules atomically. Sui events and owned receipt objects provide independently verifiable outcomes.
+## 4. Architecture, Sui integration, and track alignment
 
-**Sui Payment Kit is the cashier; `suisure::payments` is the security guard.** Payment Kit validates the amount, blocks duplicate registry payments, transfers funds, and emits its receipt. SuiSure adds merchant identity, canonical payout resolution, token binding, expiry, readable failure states, and a customer-owned receipt.
+### Architecture flow for the Draw.io diagram
+
+Include the following components and connections:
+
+1. **Customer**
+   - signs in through Google zkLogin or a Sui wallet;
+   - scans/uploads a QR or enters a plain-language request.
+
+2. **SuiSure frontend**
+   - hosted with Firebase App Hosting;
+   - requests AI interpretation when applicable;
+   - reads Sui Testnet through the Sui gRPC client;
+   - displays canonical payment details for user confirmation.
+
+3. **AI service**
+   - interprets the customer's sentence and identifies missing information;
+   - resolves suggestions only against verified merchants;
+   - returns structured assistance to the frontend;
+   - has no signing or transaction-execution capability.
+
+4. **Sui shared objects**
+   - `MerchantCredential`;
+   - `PaymentIntent`;
+   - Sui Payment Kit `PaymentRegistry`.
+
+5. **Transaction execution**
+   - the active wallet or zkLogin account signs;
+   - `suisure::payments::pay_payment_intent<T>` performs the security checks;
+   - Sui Payment Kit transfers Testnet USDC directly to the merchant payout address.
+
+6. **Transaction result**
+   - `PaymentCompleted` event;
+   - customer-owned `SuiSureReceipt`;
+   - sender and recipient activity;
+   - merchant notification;
+   - public Sui explorer transaction.
+
+Recommended main diagram flow:
+
+```text
+Customer
+  → Google zkLogin / Sui wallet
+  → QR, upload, or AI-assisted input
+  → SuiSure frontend
+  → Sui gRPC verification
+  → MerchantCredential + PaymentIntent + PaymentRegistry
+  → User-signed transaction
+  → suisure::payments security checks
+  → Sui Payment Kit
+  → Testnet USDC sent directly to merchant
+  → Receipt + event + account-scoped activity
+```
+
+Show these security notes beside the relevant components:
+
+- **QR:** object IDs only; no payout address
+- **AI:** interprets and explains; cannot sign
+- **Move contract:** payout comes from the merchant credential
+- **Payment Kit registry:** `registry_managed_funds = false`
+- **Activity:** visible only to the sender or recipient
+
+### Why Sui is integral
+
+Sui is the trust and settlement layer, not an optional database. Shared objects allow a customer to read merchant credentials and requests created by another party. Move enforces all payment rules atomically. Events and owned receipt objects provide independently verifiable payment outcomes.
+
+**Sui Payment Kit is the cashier; `suisure::payments` is the security guard.** Payment Kit performs the transfer and duplicate-payment protection. SuiSure adds verified merchant identity, canonical payout resolution, token binding, expiry enforcement, readable rejection reasons, and a customer-owned receipt.
 
 | Track | Alignment |
 | --- | --- |
-| **Track 1 — Payments & Stablecoins** | Real wallet-to-wallet Testnet USDC checkout through Sui Payment Kit, with merchant credentials, expiring payment requests, replay protection, and receipts. |
-| **Track 2 — AI × Sui** | Natural-language assistance helps users understand and prepare payments, while verified Sui objects—not model output—remain the source of truth. The AI cannot supply a trusted payout address or sign a transaction. |
-
-## 4. Architecture
-
-```mermaid
-flowchart LR
-    U[Customer] --> W[Google zkLogin or Sui wallet]
-    U --> A[SuiSure web app]
-    A --> AI[AI intent and explanation layer]
-    A --> C[Sui gRPC client]
-    W --> TX[Signed transaction]
-    C --> M[suisure::payments]
-    TX --> M
-    M --> PK[Sui Payment Kit]
-    PK --> R[Merchant payout]
-    M --> O[Receipt and PaymentCompleted event]
-```
+| **Track 1 — Payments & Stablecoins** | Real wallet-to-wallet Testnet USDC checkout using Sui Payment Kit, expiring payment requests, replay protection, merchant verification, and receipts. |
+| **Track 2 — AI × Sui** | AI helps users express and understand a payment, while verified Sui objects remain authoritative and the user retains signing control. |
 
 ### Technology stack
 
 | Layer | Technology |
 | --- | --- |
 | Frontend | React 19, TanStack Start/Router, TypeScript, Vite, Tailwind CSS |
-| Sui client | `@mysten/sui` v2 gRPC, `@mysten/dapp-kit-react` |
-| Authentication | Enoki Google zkLogin and Sui Wallet Standard |
+| Sui integration | `@mysten/sui` v2 gRPC, `@mysten/dapp-kit-react` |
+| Authentication | Enoki Google zkLogin, Sui Wallet Standard |
 | Smart contracts | Sui Move 2024, `suisure::payments` |
-| Payments | Sui Payment Kit, Circle Testnet USDC |
-| QR | `qrcode`, ZXing browser scanner |
-| Hosting | Firebase App Hosting |
+| Payment settlement | Sui Payment Kit, Circle Testnet USDC |
+| QR functionality | `qrcode`, ZXing browser scanner |
+| Deployment | Firebase App Hosting |
 
-## 5. Smart contracts, Payment Kit, and safety boundaries
+## 5. Smart contracts and Testnet deployment
 
-The QR schema accepts a payment-intent ID and merchant-credential ID. It never accepts a payout address. During payment, `pay_payment_intent<T>`:
+The `suisure::payments` Move package adds merchant-specific safety checks in front of Sui Payment Kit.
 
-1. requires an active merchant;
-2. binds the intent to the correct credential;
-3. binds the request to the correct coin type;
+During `pay_payment_intent<T>`, the contract:
+
+1. confirms the merchant credential is active;
+2. confirms the intent belongs to that credential;
+3. confirms the supplied coin type matches the request;
 4. rejects expired requests;
-5. rejects already-paid requests;
-6. reads the payout address from the credential;
+5. rejects requests that have already been paid;
+6. reads the payout address from the credential—not from the QR or caller;
 7. calls `payment_kit::process_registry_payment<T>`;
-8. marks the intent paid, emits `PaymentCompleted`, and gives the payer a receipt.
+8. marks the request paid and creates the event and customer receipt.
 
-The Payment Kit registry uses `registry_managed_funds = false`, so SuiSure never holds customer or merchant funds.
+### Deployed Sui Testnet resources
 
-### AI safety boundary
-
-The AI layer may parse a message, identify missing information, suggest verified merchant candidates, and explain what will happen. It must never:
-
-- return a payout address as trusted truth;
-- override the on-chain amount, token, merchant, or expiry;
-- sign, approve, or submit a transaction;
-- expose another account's activity or notifications.
-
-## 6. Sui Testnet deployment
-
-### Packages and shared objects
-
-| Resource | ID |
+| Resource | Object or package ID |
 | --- | --- |
 | SuiSure package | `0xac4bbcadef19c4687a75bda3afa31e069473e8824d43d771f7c5c36fee1dd445` |
 | PaymentRegistry | `0x3291fba65f6b24c4790727042b7198be9b0be43e3b88694a330cd4ad644e1691` |
 | Payment Kit package | `0x7e069abe383e80d32f2aec17b3793da82aabc8c2edf84abbf68dd7b719e71497` |
 | Payment Kit Namespace | `0xa5016862fdccba7cc576b56cc5a391eda6775200aaa03a6b3c97d512312878db` |
-| Testnet USDC type | `0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC` |
+| Testnet USDC coin type | `0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC` |
 
-Administrative capabilities are intentionally omitted from this public quick-reference table. Full deployment constants remain in `src/config/sui.ts`.
+Administrative capability IDs are intentionally omitted from this public summary. The deployed configuration is maintained in `src/config/sui.ts`.
 
-### Verified Testnet transactions
+### Public Testnet evidence
 
 | Scenario | Transaction | Result |
 | --- | --- | --- |
 | Successful payment | [`FhtaB57t…3oQcw`](https://suiscan.xyz/testnet/tx/FhtaB57tHhv5nrxKhQP4o1miyjhykFLYKDD6BCP3oQcw) | 2.553191 USDC delivered |
-| Replayed request | [`6Fp4Rd3v…b1icP`](https://suiscan.xyz/testnet/tx/6Fp4Rd3vckbRSpyrz9rMPwer4d2jCWtFHvMyLxRb1icP) | Rejected: already paid |
-| Swapped credential | [`AkzDNewd…LFXXT`](https://suiscan.xyz/testnet/tx/AkzDNewdTdKko3rxB3MiZR8KYBjUcRFWHnTGqbcLFXXT) | Rejected: merchant mismatch |
-| Wrong coin type | [`ABYL1hs4…U4fHr`](https://suiscan.xyz/testnet/tx/ABYL1hs4ThwTsYsWr7qZ613t4gp8oCni3qebUPVU4fHr) | Rejected: coin mismatch |
+| Replayed request | [`6Fp4Rd3v…b1icP`](https://suiscan.xyz/testnet/tx/6Fp4Rd3vckbRSpyrz9rMPwer4d2jCWtFHvMyLxRb1icP) | Rejected as already paid |
+| Swapped merchant credential | [`AkzDNewd…LFXXT`](https://suiscan.xyz/testnet/tx/AkzDNewdTdKko3rxB3MiZR8KYBjUcRFWHnTGqbcLFXXT) | Rejected as credential mismatch |
+| Wrong coin type | [`ABYL1hs4…U4fHr`](https://suiscan.xyz/testnet/tx/ABYL1hs4ThwTsYsWr7qZ613t4gp8oCni3qebUPVU4fHr) | Rejected as coin-type mismatch |
 
-## 7. Run locally
+## 6. Setup and testing
 
-### Prerequisites
+The live application can be used directly from the link at the top of this README.
+
+### Local installation
+
+Requirements:
 
 - Node.js 22 or newer
 - npm
-- Sui CLI for Move build/test
-- A Sui Testnet account with SUI for gas
-- Testnet USDC for payment testing
-- Enoki project and Google OAuth web client for zkLogin
-
-### Installation
+- Sui CLI for Move development and testing
+- a Sui Testnet wallet with SUI for gas and Testnet USDC for payments
 
 ```bash
 git clone https://github.com/fieqah-faisal/SuiSure-MUBA2026-Cuties.git
 cd SuiSure-MUBA2026-Cuties
 npm install
-```
-
-Create `.env.local` in the project root:
-
-```dotenv
-VITE_ENOKI_API_KEY=your_enoki_public_api_key
-VITE_GOOGLE_CLIENT_ID=your_google_oauth_client_id
-```
-
-These are browser-side public configuration values. Do not place private keys, admin capability secrets, wallet mnemonics, or server credentials in `VITE_*` variables.
-
-Run the app:
-
-```bash
 npm run dev
 ```
 
-Production build and local preview:
+Local Google zkLogin development additionally requires an Enoki project and Google OAuth public configuration. The deployed website already has its hosting configuration.
+
+Production build and preview:
 
 ```bash
 npm run build
 npm run preview
 ```
 
-The preview command runs the generated TanStack/Nitro server from `.output/server/index.mjs`.
-
-## 8. Testing
+Validation commands:
 
 ```bash
 npm run lint
@@ -186,60 +223,37 @@ sui move build
 sui move test
 ```
 
-The Move suite contains eight tests, including five expected-failure cases. Before a release, also test both Google zkLogin and an extension wallet:
+The Move package contains eight tests, including five expected-failure cases. The end-to-end flow has also been tested with Google zkLogin and extension-wallet accounts across valid, expired, replayed, and rejected payment requests.
 
-- sign in and verify the displayed address/balances;
-- open a valid QR and confirm the merchant, amount, token, and expiry;
-- complete a Testnet USDC payment and open its explorer link;
-- verify payer and merchant activity/notifications are account-scoped;
-- retry the same intent and confirm replay rejection;
-- open an expired intent and confirm no transaction can be submitted;
-- sign out/disconnect and confirm protected state is cleared.
-
-## 9. Security model, limitations, and roadmap
-
-### Security model
-
-- The payout address comes only from the on-chain merchant credential.
-- Canonical on-chain state overrides QR, URL, and AI-provided text.
-- Coin type and smallest-unit precision are explicit; Testnet USDC uses six decimals.
-- Transactions require the current user's wallet or zkLogin signer.
-- Funds move directly to the merchant; SuiSure is non-custodial.
-- Activity and notifications are filtered to the connected account.
+## 7. Current limitations and future integrations
 
 ### Current limitations
 
-- Testnet prototype only; no real-money or licensed payment service.
-- Merchant credentials are administrator-issued.
-- Testnet USDC/MYR display conversion is a demo configuration, not a live FX quote.
-- Google zkLogin is the current social provider; Apple and Facebook are not enabled.
-- The AI layer assists interpretation and explanation but never authorizes payment.
+- Sui Testnet prototype; it is not a licensed real-money payment service.
+- Merchant credentials are currently administrator-issued.
+- Testnet USDC/MYR display conversion is demo configuration rather than a live foreign-exchange quote.
+- Google is the current zkLogin social provider.
+- The AI layer assists payment understanding but does not authorize payment.
 
 ### Future integrations
 
-- Merchant self-service application and administrator approval workflow
-- Additional zkLogin providers
-- Production-grade pricing/oracle integration
-- More stablecoins and merchant settlement preferences
-- Richer receipts, refunds, and merchant reconciliation
-- Model-backed multilingual assistance with the same deterministic safety boundary
+- merchant self-service application and administrator approval;
+- additional zkLogin identity providers;
+- production-grade pricing or oracle integration;
+- additional stablecoins and merchant settlement preferences;
+- refunds, richer receipts, and merchant reconciliation;
+- multilingual AI assistance under the same deterministic safety boundary.
 
-## 10. Team, AI declaration, and license
+## 8. Team members and responsibilities
 
-| Member | Responsibility |
+| Team member | Responsibility |
 | --- | --- |
-| **Aida** | Move contract, Sui Payment Kit integration, Testnet deployment, Sui transaction adapter |
-| **Aidan** | AI endpoint, structured intent output, merchant resolution, validation |
-| **Syafieqah** | Wallet and zkLogin integration, live Sui frontend flows, QR/review/receipt UI, Firebase deployment |
-
-### AI tools declaration
-
-AI tools were used during development for implementation support, review, debugging, and documentation. The team must list the exact tools/models used in the final hackathon submission. AI-generated suggestions were reviewed and tested by team members; on-chain transactions remain user-authorized.
-
-### License
-
-This repository is a hackathon prototype. No open-source license has been granted unless a `LICENSE` file is added.
+| **Aida** | Move contract, Sui Payment Kit integration, Testnet deployment, and Sui transaction adapter |
+| **Aidan** | AI endpoint, structured intent output, merchant resolution, and validation |
+| **Syafieqah** | Wallet and zkLogin integration, live Sui frontend flows, QR/review/receipt UI, Firebase deployment, and release coordination |
 
 ---
+
+**License:** Hackathon prototype. No open-source license is granted unless a `LICENSE` file is added.
 
 **Before you pay, SuiSure asks: “U sure or not?”**
